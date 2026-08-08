@@ -910,15 +910,41 @@ function parcaDuzenleAc(i) {
     if (modal) modal.style.display = 'flex';
 }
 
+// Eksik olan Veri Güncelleme Fonksiyonunun Örnek Doğru Yapısı:
 function modalVeriGuncelle() {
     const i = document.getElementById('modalDuzenleIndex').value;
-    if (i === "" || !confirm("Değişiklikler kaydedilsin mi?")) return;
-
-    // TODO: Alanları oku, stokKoduCanliKontrolModal(sku) ile kontrol et, 
-    // parcaListesi[i] nesnesini güncelle, localStorage'a yaz,
-    // modalKapat() ve tabloYenile() çağır.
+    if (i === "") return;
     
-    // ... gerekli güncelleme mantığı ...
+    if (!confirm("Değişiklikler kaydedilsin mi?")) return;
+
+    const sku = document.getElementById('modalStokKodu').value.trim();
+    if(stokKoduCanliKontrolModal(sku) === false) return;
+
+    parcaListesi[i].id = document.getElementById('modalUrunID').value.trim();
+    parcaListesi[i].sku = sku;
+    parcaListesi[i].ad = document.getElementById('modalParcaAdi').value.trim();
+    parcaListesi[i].mrk = temizMetinAyikla(document.getElementById('modalMarka').value);
+    parcaListesi[i].durum = temizMetinAyikla(document.getElementById('modalUrunDurumu').value);
+    parcaListesi[i].stok = document.getElementById('modalUrunStok').value;
+    parcaListesi[i].fiyat = document.getElementById('modalUrunFiyat').value.trim();
+    parcaListesi[i].raf = document.getElementById('modalUrunRafYeri').value.trim();
+    parcaListesi[i].not = document.getElementById('modalUrunNotu').value.trim();
+
+    localStorage.setItem('yedekParcaSonDinamik', JSON.stringify(parcaListesi));
+    
+    document.getElementById('duzenleModal').style.display = 'none';
+    tabloYenile();
+    if(document.getElementById('aramaSonuclariPaneli').style.display === 'block') tabloAra();
+    alert("Parça başarıyla güncellendi!");
+}
+
+// Eksik olan Yükleme Ekranı Fonksiyonları:
+function yukleniyorGoster(metin) {
+    document.getElementById('loadingEkran').style.display = 'flex';
+    document.getElementById('loadingMetin').innerText = metin;
+}
+function yukleniyorGizle() {
+    document.getElementById('loadingEkran').style.display = 'none';
 }
 
 function modalKapat() {
