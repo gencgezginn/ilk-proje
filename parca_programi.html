@@ -676,13 +676,51 @@ if (e.key.toLowerCase() === 'enter' && e.target.tagName !== 'BUTTON' && e.target
         kap.appendChild(d); d.querySelector('input').focus();
     }
 
-    function modalMuadilEkle() {
-        const kap = document.getElementById('modalMuadilKap'); if(!kap) return;
-        const count = kap.querySelectorAll('.dynamic-item').length + 1;
-        const d = document.createElement('div'); d.className = 'dynamic-item';
-        d.innerHTML = '<input type="text" class="muadil-input" placeholder="Değişen ' + count + '" autocomplete="off">';
-        kap.appendChild(d); d.querySelector('input').focus();
-    }
+    function modalAracSecimKutusuEkle() {
+
+    const kap =
+        document.getElementById('modalAracKap');
+
+    if (!kap) return;
+
+    const count =
+        kap.querySelectorAll('.dynamic-item').length + 1;
+
+    const d =
+        document.createElement('div');
+
+    d.className = 'dynamic-item';
+
+    const input =
+        document.createElement('input');
+
+    input.type = 'text';
+    input.className = 'arac-input';
+
+    input.setAttribute(
+        'list',
+        'havuzDatalist'
+    );
+
+    input.placeholder =
+        'Araç ' + count;
+
+    input.autocomplete = 'off';
+
+    input.addEventListener(
+        'input',
+        akilliButonGozculugu
+    );
+
+    d.appendChild(input);
+
+    kap.appendChild(d);
+
+    // Kutu eklendiği anda Kaydet aktif
+    akilliButonGozculugu();
+
+    input.focus();
+}
 
     function modalAracSecimKutusuEkle() {
         const kap = document.getElementById('modalAracKap'); if(!kap) return;
@@ -849,45 +887,42 @@ if (e.key.toLowerCase() === 'enter' && e.target.tagName !== 'BUTTON' && e.target
     // JSON kullanıldığı için "ABC"+"DEF" gibi hatalı karşılaştırmalar olmaz.
     function yakalaEkrandakiMevcutVeriler() {
 
-        const muadiller = [];
+    const muadiller = [];
 
-        document.querySelectorAll(
-            '#modalMuadilKap .muadil-input'
-        ).forEach(function(input) {
-            const deger = input.value.trim();
+    document.querySelectorAll(
+        '#modalMuadilKap .muadil-input'
+    ).forEach(function(input) {
+        muadiller.push(input.value.trim());
+    });
 
-            if (deger !== "") {
-                muadiller.push(deger);
-            }
-        });
+    const araclar = [];
 
-        const araclar = [];
+    document.querySelectorAll(
+        '#modalAracKap .arac-input'
+    ).forEach(function(input) {
+        araclar.push(input.value.trim());
+    });
 
-        document.querySelectorAll(
-            '#modalAracKap .arac-input'
-        ).forEach(function(input) {
-            const deger = temizMetinAyikla(input.value);
+    return JSON.stringify({
+        id: document.getElementById('modalUrunID').value.trim(),
+        sku: document.getElementById('modalStokKodu').value.trim(),
+        ad: document.getElementById('modalParcaAdi').value.trim(),
+        marka: document.getElementById('modalMarka').value.trim(),
+        durum: document.getElementById('modalUrunDurumu').value.trim(),
+        stok: document.getElementById('modalUrunStok').value,
+        fiyat: document.getElementById('modalUrunFiyat').value.trim(),
+        raf: document.getElementById('modalUrunRafYeri').value.trim(),
+        resim: document.getElementById('modalUrunResim').value.trim(),
+        not: document.getElementById('modalUrunNotu').value.trim(),
 
-            if (deger !== "") {
-                araclar.push(deger);
-            }
-        });
+        // Kutu sayıları da karşılaştırılıyor
+        muadilKutuSayisi: muadiller.length,
+        aracKutuSayisi: araclar.length,
 
-        return JSON.stringify({
-            id: modalDeger("modalUrunID").trim(),
-            sku: modalDeger("modalStokKodu").trim(),
-            ad: modalDeger("modalParcaAdi").trim(),
-            mrk: modalDeger("modalMarka").trim(),
-            durum: modalDeger("modalUrunDurumu").trim(),
-            stok: modalDeger("modalUrunStok"),
-            fiyat: modalDeger("modalUrunFiyat").trim(),
-            raf: modalDeger("modalUrunRafYeri").trim(),
-            resim: modalDeger("modalUrunResim").trim(),
-            not: modalDeger("modalUrunNotu").trim(),
-            muadiller: muadiller,
-            araclar: araclar
-        });
-    }
+        muadiller: muadiller,
+        araclar: araclar
+    });
+}
 
 
     // ============================================================
