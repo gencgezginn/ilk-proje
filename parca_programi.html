@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Oto Yedek Parça ve Raf Depo Otomasyonu</title>
     <style>
@@ -184,7 +184,6 @@
         <div class="btn-row">
             <button class="btn-add" onclick="veriKaydet()">Hafızaya Kaydet (Enter)</button>
         </div>
-    </div> <!-- #yedekParcaSekmesi KAPANIŞI -->
     </div> <!-- #yedekParcaSekmesi KAPANIŞI -->
     <!-- 2. SEKME: ARAÇ HAVUZU (KOMPLE TURUNCU TAKIM) -->
     <div id="aracHavuzuSekmesi" class="tab-content">
@@ -438,8 +437,8 @@
     }
 
     // DONMAYI BİTİREN HAFİFLETİLMİŞ KLAVYE DINLEYICISI
-    window.addEventListener('keydown', function(e) { 
-        if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'TEXTAREA') { 
+    window.addEventListener('keydown', function(e) {
+if (e.key.toLowerCase() === 'enter' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'TEXTAREA') { 
             const mU = document.getElementById('duzenleModal');
             const mA = document.getElementById('aracDuzenleModal');
             const mM = document.getElementById('markaDuzenleModal');
@@ -752,12 +751,19 @@
 
     // ANA VERİ KAYDETME MEKANİZMASI
     function veriKaydet() {
-        const id = document.getElementById('urunID').value.trim();
-        const sku = document.getElementById('stokKodu').value.trim();
-        const ad = document.getElementById('parcaAdi').value.trim();
-        if (id === "" || sku === "" || ad === "") { alert("Ürün No, Stok Kodu ve Ürün Adı alanları zorunludur!"); return; }
-        if (!stokKoduCanliKontrol(sku)) return;
-        
+    const id = document.getElementById('urunID').value.trim();
+    const sku = document.getElementById('stokKodu').value.trim();
+    const ad = document.getElementById('parcaAdi').value.trim();
+    
+    if (id === "" || sku === "" || ad === "") { 
+        alert("Ürün No, Stok Kodu ve Ürün Adı alanları zorunludur!"); 
+        return; 
+    }
+    
+    // Eğer stok kodu zaten varsa true/false dönecek ve kaydı tamamen durduracak:
+    if (stokKoduCanliKontrol(sku) === false) {
+        return; 
+    }
         const mrk = temizMetinAyikla(document.getElementById('marka').value) || "-";
         const drm = temizMetinAyikla(document.getElementById('urunDurumu').value) || "-";
         const stk = document.getElementById('urunStok').value;
@@ -847,7 +853,16 @@
     }
 
     function modalKapat() { const modal = document.getElementById('duzenleModal'); if (modal) modal.style.display = 'none'; }
-    function aracSatirDuzenle(i) { const a = aracHavuzu[i]; if (!a) return; document.getElementById('modalAracDuzenleIndex').value = i; document.getElementById('modalAracMarka').value = a.marca || a.marka || "-"; document.getElementById('modalAracModel').value = a.model || "-"; document.getElementById('modalAracYil').value = a.yil || "-"; const modal = document.getElementById('aracDuzenleModal'); if (modal) modal.style.display = 'flex'; }
+    function function aracSatirDuzenle(i) { 
+    const a = aracHavuzu[i]; 
+    if (!a) return; 
+    document.getElementById('modalAracDuzenleIndex').value = i; 
+    document.getElementById('modalAracMarka').value = a.marka || "-"; 
+    document.getElementById('modalAracModel').value = a.model || "-"; 
+    document.getElementById('modalAracYil').value = a.yil || "-"; 
+    const modal = document.getElementById('aracDuzenleModal'); 
+    if (modal) modal.style.display = 'flex'; 
+}
     function modalAracGuncelle() { const i = document.getElementById('modalAracDuzenleIndex').value; if (i === "") return; const m = document.getElementById('modalAracMarka').value.trim(); const mo = document.getElementById('modalAracModel').value.trim(); const y = document.getElementById('modalAracYil').value.trim(); if (m === "" || mo === "") { alert("Marka ve Model boş bırakılamaz!"); return; } aracHavuzu[i] = { marka: m, model: mo, yil: y }; localStorage.setItem('yedekParcaAracHavuzuNesne', JSON.stringify(aracHavuzu)); aracModalKapat(); aracTablosuYenile(); datalistleriTazele(); }
     function aracModalKapat() { const modal = document.getElementById('aracDuzenleModal'); if (modal) modal.style.display = 'none'; }
     function markaSatirDuzenle(i) { const m = markaHavuzu[i]; if (!m) return; document.getElementById('modalMarkaDuzenleIndex').value = i; document.getElementById('modalMarkaAd').value = m || "-"; const modal = document.getElementById('markaDuzenleModal'); if (modal) modal.style.display = 'flex'; }
