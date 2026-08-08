@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oto Yedek Parça ve Raf Depo Otomasyonu</title>
+    <style>
+        :root {
+            --primary: #1e40af; /* Asil Mavi */
+            --secondary: #64748b; 
+            --success: #16a34a; /* Esnaf Yeşili */
+            --danger: #dc2626; 
+            --border: #cbd5e1; 
+            --text: #1e293b;
+            --background: #f8fafc; 
+            --surface: #ffffff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--background); color: var(--text); padding: 20px; font-size: 14px; line-height: 1.5; }
+        
+        /* 📌 SABİT ÜST MENÜ VE İÇERİK KONTEYNERİ */
+        .container { 
+            max-width: 1400px; 
+            margin: 130px auto 0 auto; 
+            background: var(--surface); 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); 
+        }
+        
+        .tabs { 
+            position: fixed; top: 0; left: 0; width: 100%; 
+            background: var(--surface); z-index: 999; 
+            padding: 15px 20px 5px 20px; margin-bottom: 0; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .sub-tabs-container { 
+            position: fixed; top: 52px; left: 0; width: 100%; 
+            z-index: 998; padding: 10px 20px; margin-bottom: 0; 
+            border-left: none; border-right: none; background: #f1f5f9;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            display: none; /* AÇILIŞTA KESİN GİZLİ KURALI */
+        }
+        .tab-btn { padding: 10px 20px; border: none; background: #e2e8f0; color: #475569; font-weight: 600; cursor: pointer; border-radius: 8px 8px 0 0; transition: all 0.2s; }
+        .tab-btn:hover { background: #cbd5e1; }
+        
+        /* İstediğin kural: Sadece Yedek Parça Girişi ana menüsü aktifken mühürlü yeşil olur */
+        .tab-btn.active#anaGirisBtn { background-color: var(--success) !important; color: white !important; }
+        
+        .sub-tab-btn { padding: 6px 14px; border: 1px solid var(--border); background: white; color: #475569; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
+        .sub-tab-btn:hover { background: #e2e8f0; }
+        
+        /* Sektörel Renk Takımları Aktif Ayarları */
+        .sub-tab-btn.active.btn-giris { background: #1e40af; color: white; border-color: #1e40af; }
+        .sub-tab-btn.active.btn-arac { background: #fd7e14; color: white; border-color: #fd7e14; }
+        .sub-tab-btn.active.btn-marka { background: #6f42c1; color: white; border-color: #6f42c1; }
+        .sub-tab-btn.active.btn-durum { background: #20c997; color: white; border-color: #20c997; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        /* Form Arayüz Esneklikleri */
+        .row { display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap; width: 100%; }
+        .form-group { display: flex; flex-direction: column; min-width: 140px; }
+        .form-group label { font-weight: 600; margin-bottom: 5px; color: #475569; font-size: 13px; }
+        input[type="text"], input[type="number"], select, textarea { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 14px; transition: border 0.2s; width: 100%; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30,64,175,0.1); }
+
+        button { padding: 9px 16px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
+        button:hover { opacity: 0.9; }
+        .btn-add { background-color: var(--primary); color: white; }
+        .btn-export { background-color: var(--success); color: white; }
+        .btn-template { background-color: var(--secondary); color: white; }
+        .btn-clear-all { background-color: var(--danger); color: white; width: 100%; margin-top: 25px; padding: 12px; border-radius: 8px; font-size: 14px; }
+        .btn-small { padding: 4px 10px; font-size: 12px; border-radius: 4px; color: white; }
+        .btn-edit { background-color: #ffc107; color: #212529; font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+        .btn-delete { background-color: var(--danger); color: white; font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+        
+        .import-box { background: #f1f5f9; padding: 12px 18px; border-radius: 8px; border: 1px dashed var(--border); margin-bottom: 15px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+        .counter-row { display: flex; justify-content: space-between; background: #e2e8f0; padding: 8px 15px; border-radius: 6px; font-weight: 600; margin-bottom: 15px; font-size: 13px; }
+        .section-box { border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #fafafa; }
+        .section-title { font-weight: 700; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; color: #334155; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+        .dynamic-list { display: flex; flex-wrap: wrap; gap: 10px; min-height: 40px; align-items: center; }
+        .dynamic-item { display: flex; align-items: center; background: #e2e8f0; padding: 4px 8px; border-radius: 4px; gap: 5px; }
+        .dynamic-item input { width: 180px; padding: 4px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; }
+        .btn-row { display: flex; gap: 10px; margin-top: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+        
+        .search-container { background: #eff6ff; border: 1px solid #bfdbfe; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .search-row { display: flex; gap: 10px; }
+        .search-input { flex: 1; }
+        .btn-search { background-color: var(--primary); color: white; }
+        
+        .panel-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; margin-top: 5px; }
+        .table-wrapper { overflow-x: auto; margin-bottom: 25px; border-radius: 8px; border: 1px solid var(--border); background: white; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; min-width: 1100px; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        th { background-color: #f1f5f9; font-weight: 700; color: #334155; white-space: nowrap; }
+        tr:hover { background-color: #f8fafc; }
+        .id-col { width: 110px; font-weight: bold; color: var(--primary); }
+        .date-col { width: 110px; color: #64748b; }
+        .action-col { width: 140px; text-align: center; white-space: nowrap; }
+
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; overflow-y: auto; }
+        .modal-content { background: white; padding: 25px; border-radius: 10px; width: 100%; max-width: 1150px; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); position: relative; margin: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
+        .modal-title { font-size: 17px; font-weight: 700; }
+        .modal-close { font-size: 24px; cursor: pointer; color: #94a3b8; font-weight: bold; }
+        .modal-close:hover { color: black; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 15px; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+        .loading-spinner { border: 5px solid #e2e8f0; border-top: 5px solid var(--primary); border-radius: 50%; width: 45px; height: 45px; animation: spin 0.8s linear infinite; margin-bottom: 15px; }
+        #loadingMetin { font-weight: 600; color: var(--primary); font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- ANA SABİT MENÜ (YEDEK PARÇA GİRİŞİ ETİKETİ AKTİFKEN MÜHÜRLÜ YEŞİL OLUR) -->
+    <div class="tabs">
+        <button id="anaGirisBtn" class="tab-btn active" onclick="anaSekmeTıklandı()">📦 Yedek Parça Girişi</button>
+    </div>
+    
+    <!-- HIZLI ERİŞİM ALT HAVUZ MENÜSÜ (AÇILIŞTA KESİN OLARAK GİZLİ TUTULUR) -->
+    <div id="altHavuvMenusu" class="sub-tabs-container">
+        <span style="display: flex; align-items: center; font-weight: bold; font-size:12px; color:#64748b; margin-right:5px;">Hızlı Havuz Erişimi:</span>
+        <button id="subBtnGiris" class="sub-tab-btn active btn-giris" onclick="altSekmeDegistir('yedekParcaSekmesi', this)">Kayıt Ekranı</button>
+        <button class="sub-tab-btn btn-arac" onclick="altSekmeDegistir('aracHavuzuSekmesi', this)">🚗 Araç Havuzu</button>
+        <button class="sub-tab-btn btn-marka" onclick="altSekmeDegistir('markaHavuzuSekmesi', this)">🏷️ Marka Havuzu</button>
+        <button class="sub-tab-btn btn-durum" onclick="altSekmeDegistir('durumHavuzuSekmesi', this)">✨ Durum Havuzu</button>
+    </div>
+
+    <!-- 1. SEKME: YEDEK PARÇA GİRİŞ FORMU -->
+    <div id="yedekParcaSekmesi" class="tab-content active">
+                <!-- KAYIT EKRANI YÜKLEME VE YEDEKLEME KUTUSU (YENİ DÜZEN) -->
+        <div class="import-box" style="border-color: var(--primary);">
+            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="margin:0;"><b>Ürün Listesi JSON Yükle (.json):</b></label>
+                    <input type="file" id="csvDosyaSec" accept=".json" style="width:auto; padding:3px;">
+                </div>
+                <button type="button" class="btn-small" style="background-color: var(--primary);" onclick="topluParcaYukle()">⚡ Dosyayı Yükle</button>
+            </div>
+            <!-- BUTONLAR BURADA YAN YANA VE UYUMLU DURACAK -->
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn-small" style="background-color: var(--primary);" onclick="dosyaIndirYenilenmis()">📥 Tüm Hafızayı Yedekle</button>
+                <button type="button" class="btn-template" style="background-color: var(--secondary); font-size:12px; padding:4px 8px;" onclick="ornekParcaSablonuIndir()">📋 Şablon İndir</button>
+            </div>
+        </div>
+
+        <div class="counter-row">
+            <div>Durum: <span style="color: #28a745;">Komple Bedava / İnternetsiz / %100 Hızlı JSON Veri Yönetimi</span></div>
+            <div>Hafızadaki Toplam Parça: <span id="recordCount">0</span></div>
+        </div>
+
+        <!-- EKRAN KÜÇÜLTMEYE SON VEREN FERAH 3 SATIR DÜZENİ -->
+        <div class="row">
+            <div class="form-group" style="flex: 1.5; min-width: 120px;"><label>Ürün No (ID):</label><input type="text" id="urunID" placeholder="Örn: WOLKSTEK-1" autocomplete="off"></div>
+            <div class="form-group" style="flex: 2; min-width: 150px;"><label>Ana Stok Kodu (SKU):</label><input type="text" id="stokKodu" placeholder="Örn: 1K0121251BR" autocomplete="off"></div>
+            <div class="form-group" style="flex: 4; min-width: 250px;"><label>Ürün Adı:</label><input type="text" id="parcaAdi" placeholder="Örn: Radyatör Su Deposu" autocomplete="off"></div>
+        </div>
+        
+        <div class="row">
+            <div class="form-group" style="flex: 2.5; min-width: 180px;"><label>Marka:</label><input type="text" id="marka" list="markaDatalist" placeholder="Marka seçin..." autocomplete="off"></div>
+            <div class="form-group" style="flex: 2.5; min-width: 180px;"><label>Ürün Durumu:</label><input type="text" id="urunDurumu" list="durumDatalist" placeholder="Durum seçin..." autocomplete="off"></div>
+            <div class="form-group" style="flex: 1; min-width: 90px;"><label>Stok Adedi:</label><select id="urunStok"></select></div>
+            <div class="form-group" style="flex: 1.5; min-width: 110px;"><label>Fiyat (TL):</label><input type="text" id="urunFiyat" placeholder="Örn: 1250" autocomplete="off"></div>
+        </div>
+
+        <div class="row">
+            <div class="form-group" style="flex: 1.5; min-width: 140px;"><label>Raf / Lokasyon:</label><input type="text" id="urunRafYeri" placeholder="Örn: A-12 / RAF-3" autocomplete="off"></div>
+            <div class="form-group" style="flex: 2; min-width: 160px;"><label>Resim Adı:</label><input type="text" id="urunResim" placeholder="Örn: passatbraket.jpg" autocomplete="off"></div>
+            <div class="form-group" style="flex: 4; min-width: 250px;"><label>Ürün Hakkında Not:</label><input type="text" id="urunNotu" placeholder="Ürün hakkında özel notlarınızı buraya yazabilirsiniz..." autocomplete="off"></div>
+        </div>
+
+        <div class="section-box">
+            <div class="section-title"><span>Değişen Parça Numaraları</span><button type="button" class="btn-small" style="background-color: var(--primary);" onclick="muadilEkle()">➕ Yeni Değişen No Ekle</button></div>
+            <div class="dynamic-list" id="muadilKap"></div>
+        </div>
+        <div class="section-box">
+            <div class="section-title"><span>Uyumlu Araç Modelleri</span><button type="button" class="btn-small" style="background-color: var(--primary);" onclick="aracSecimKutusuEkle()">➕ Yeni Araç Kutusu Ekle</button></div>
+            <div class="dynamic-list" id="aracKap"></div>
+        </div>
+        
+        <!-- FORMUN EN ALTINDAKİ TEMİZ KAYDET SATIRI -->
+        <div class="btn-row">
+            <button class="btn-add" onclick="veriKaydet()">Hafızaya Kaydet (Enter)</button>
+        </div>
+    </div> <!-- #yedekParcaSekmesi KAPANIŞI -->
+    </div> <!-- #yedekParcaSekmesi KAPANIŞI -->
+    <!-- 2. SEKME: ARAÇ HAVUZU (KOMPLE TURUNCU TAKIM) -->
+    <div id="aracHavuzuSekmesi" class="tab-content">
+        <!-- ARAÇ HAVUZU YÜKLEME KUTUSU (KOMPLE TURUNCU) -->
+        <div class="import-box" style="border-color: #fd7e14;">
+            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="margin:0;"><b>Araç Havuzu JSON Yükle (.json):</b></label>
+                    <input type="file" id="aracExcelSec" accept=".json" style="width:auto; padding:3px;">
+                </div>
+                <button type="button" class="btn-small" style="background-color:#fd7e14;" onclick="topluAracYukle()">⚡ Dosyayı Yükle</button>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn-small" style="background-color:#fd7e14;" onclick="aracHavuzunuIndir()">📥 Havuzu Yedekle</button>
+                <button type="button" class="btn-template" style="background-color:var(--secondary); font-size:12px; padding:4px 8px;" onclick="ornekAracSablonuIndir()">📋 Şablon İndir</button>
+            </div>
+        </div>
+
+        <div class="counter-row"><div>Toplam Tanımlı Araç: <span id="aracCount">0</span></div></div>
+        <div class="row">
+            <div class="form-group" style="flex: 1; min-width: 90px;"><label>Araç No:</label><input type="number" id="aracID" readonly style="background:#e9ecef;"></div>
+            <div class="form-group" style="flex: 2;"><label>Marka:</label><input type="text" id="aracMarkaInput" placeholder="Örn: VW" autocomplete="off"></div>
+            <div class="form-group" style="flex: 3;"><label>Model:</label><input type="text" id="aracModelInput" placeholder="Örn: GOLF 5" autocomplete="off"></div>
+            <div class="form-group" style="flex: 2;"><label>Yıl Aralığı:</label><input type="text" id="aracYilInput" placeholder="Örn: 2004-2008" autocomplete="off"></div>
+        </div>
+        <div class="btn-row" style="margin-bottom:25px;"><button class="btn-add" style="background-color:#fd7e14;" onclick="aracHavuzunaEkle()">🚗 Aracı Havuza Kaydet</button></div>
+        <div class="table-wrapper" style="border: 1px solid #fd7e14;">
+            <table id="aracHavuzTablosu">
+                <thead><tr><th class="id-col">No</th><th>Marka</th><th>Model</th><th>Yıl Aralığı</th><th class="action-col">İşlem</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div> <!-- #aracHavuzuSekmesi KAPANIŞI -->
+
+    <!-- 3. SEKME: MARKA HAVUZU (KOMPLE MOR TAKIM) -->
+    <div id="markaHavuzuSekmesi" class="tab-content">
+        <!-- MARKA HAVUZU YÜKLEME KUTUSU (KOMPLE MOR) -->
+        <div class="import-box" style="border-color: #6f42c1;">
+            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="margin:0;"><b>Marka Havuzu JSON Yükle (.json):</b></label>
+                    <input type="file" id="markaExcelSec" accept=".json" style="width:auto; padding:3px;">
+                </div>
+                <button type="button" class="btn-small" style="background-color:#6f42c1;" onclick="topluMarkaYukle()">⚡ Dosyayı Yükle</button>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn-small" style="background-color:#6f42c1;" onclick="markaHavuzunuIndir()">📥 Havuzu Yedekle</button>
+                <button type="button" class="btn-template" style="background-color:var(--secondary); font-size:12px; padding:4px 8px;" onclick="ornekMarkaSablonuIndir()">📋 Şablon İndir</button>
+            </div>
+        </div>
+
+        <div class="counter-row"><div>Toplam Tanımlı Marka: <span id="markaCount">0</span></div></div>
+        <div class="row">
+            <div class="form-group" style="flex: 1; min-width: 90px;"><label>Marka No:</label><input type="number" id="markaID" readonly style="background:#e9ecef;"></div>
+            <div class="form-group" style="flex: 4;"><label>Marka Adı:</label><input type="text" id="markaAdInput" placeholder="Örn: HELLA, VALEO" autocomplete="off"></div>
+        </div>
+        <div class="btn-row" style="margin-bottom:25px;"><button class="btn-add" style="background-color:#6f42c1;" onclick="markaHavuzaEkle()">🏷️ Markayı Havuza Kaydet</button></div>
+        <div class="table-wrapper" style="border: 1px solid #6f42c1;">
+            <table id="markaHavuzTablosu">
+                <thead><tr><th class="id-col">No</th><th>Marka Adı</th><th class="action-col">İşlem</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div> <!-- #markaHavuzuSekmesi KAPANIŞI -->
+
+    <!-- 4. SEKME: DURUM HAVUZU (KOMPLE TURKUAZ TAKIM) -->
+    <div id="durumHavuzuSekmesi" class="tab-content">
+        <!-- DURUM HAVUZU YÜKLEME KUTUSU (KOMPLE TURKUAZ) -->
+        <div class="import-box" style="border-color: #20c997;">
+            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <label style="margin:0;"><b>Durum Havuzu JSON Yükle (.json):</b></label>
+                    <input type="file" id="durumExcelSec" accept=".json" style="width:auto; padding:3px;">
+                </div>
+                <button type="button" class="btn-small" style="background-color:#20c997;" onclick="topluDurumYukle()">⚡ Dosyayı Yükle</button>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn-small" style="background-color:#20c997;" onclick="durumHavuzunuIndir()">📥 Havuzu Yedekle</button>
+                <button type="button" class="btn-template" style="background-color:var(--secondary); font-size:12px; padding:4px 8px;" onclick="ornekDurumSablonuIndir()">📋 Şablon İndir</button>
+            </div>
+        </div>
+
+        <div class="counter-row"><div>Toplam Tanımlı Durum: <span id="durumCount">0</span></div></div>
+        <div class="row">
+            <div class="form-group" style="flex: 1; min-width: 90px;"><label>Durum No:</label><input type="number" id="durumID" readonly style="background:#e9ecef;"></div>
+            <div class="form-group" style="flex: 4;"><label>Durum Adı:</label><input type="text" id="durumAdInput" placeholder="Örn: SIFIR, ÇIKMA" autocomplete="off"></div>
+        </div>
+        <div class="btn-row" style="margin-bottom:25px;"><button class="btn-add" style="background-color:#20c997;" onclick="durumHavuzaEkle()">✨ Durumu Havuza Kaydet</button></div>
+        <div class="table-wrapper" style="border: 1px solid #20c997;">
+            <table id="durumHavuzTablosu">
+                <thead><tr><th class="id-col">No</th><th>Durum Adı</th><th class="action-col">İşlem</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div> <!-- #durumHavuzuSekmesi KAPANIŞI -->
+    <!-- 📌 GİZLENMEYEN, SÜREKLİ EKRANDA SABİT KALAN GENEL ARAMA VE LİSTE PANELİ -->
+    <div id="sabitGenelListeGrubu" style="display: block;">
+        <div class="search-container">
+            <label style="display:block; font-weight:bold; margin-bottom:5px; color:#1e40af; font-size:13px;">Hızlı Arama Motoru (Ürün No, Stok Kodu veya Değişen Kod):</label>
+            <div class="search-row">
+                <input type="text" id="tabloArama" class="search-input" placeholder="Aramak istediğiniz Ürün No, SKU veya Değişen Kodu yazıp Ara'ya basın...">
+                <button type="button" class="btn-search" onclick="tabloAra()">🔍 Ara</button>
+            </div>
+        </div>
+
+        <div id="aramaSonuclariPaneli" style="display: none;">
+            <div class="panel-title" style="color: #0d6efd;">🔍 Arama Sonuçları</div>
+            <div class="table-wrapper" style="border: 2px solid #a2c4fa;">
+                <table id="aramaTablosu">
+                    <thead>
+                        <tr><th class="id-col">Ürün No</th><th>Stok Kodu</th><th>Ürün Adı</th><th>Marka</th><th>Durum</th><th style="width: 50px;">Stok</th><th style="width: 90px;">Fiyat</th><th>Raf Yeri</th><th>Resim Adı</th><th>Değişen Kodlar</th><th>Uyumlu Araçlar</th><th>Ürün Notu</th><th class="date-col">İşlem Tarihi</th><th class="action-col">İşlem</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel-title" style="color: #198754;">📋 Eklenen Son 5 Ürün (Genel Liste)</div>
+        <div class="table-wrapper" style="border: 1px solid #198754;">
+            <table id="veritabani">
+                <thead>
+                    <tr><th class="id-col">Ürün No</th><th>Stok Kodu</th><th>Ürün Adı</th><th>Marka</th><th>Durum</th><th style="width: 50px;">Stok</th><th style="width: 90px;">Fiyat</th><th>Raf Yeri</th><th>Resim Adı</th><th>Değişen Kodlar</th><th>Uyumlu Araçlar</th><th>Ürün Notu</th><th class="date-col">İşlem Tarihi</th><th class="action-col">İşlem</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <datalist id="havuzDatalist"></datalist>
+    <datalist id="markaDatalist"></datalist>
+    <datalist id="durumDatalist"></datalist>
+
+    <button class="btn-clear-all" onclick="hafizaSifirla()">Tüm Hafızayı Sıfırla</button>
+</div> <!-- .container KAPANIŞI -->
+
+<!-- 1. YEDEK PARÇA VERİSİ GÜNCELLEME PENCERESİ (MODAL) -->
+<div class="modal-backdrop" id="duzenleModal">
+    <div class="modal-content">
+        <div class="modal-header"><div class="modal-title">🔧 Parça Verisi Düzenle</div><div class="modal-close" onclick="modalKapat()">&times;</div></div>
+        <input type="hidden" id="modalDuzenleIndex">
+        
+        <div class="row">
+            <div class="form-group" style="flex: 1.5; min-width: 120px;"><label>Ürün No (ID):</label><input type="text" id="modalUrunID"></div>
+            <div class="form-group" style="flex: 2; min-width: 150px;"><label>Ana Stok Kodu (SKU):</label><input type="text" id="modalStokKodu" oninput="stokKoduCanliKontrolModal(this.value)"></div>
+            <div class="form-group" style="flex: 4; min-width: 250px;"><label>Ürün Adı:</label><input type="text" id="modalParcaAdi"></div>
+        </div>
+        <div class="row">
+            <div class="form-group" style="flex: 2.5; min-width: 180px;"><label>Marka:</label><input type="text" id="modalMarka" list="markaDatalist"></div>
+            <div class="form-group" style="flex: 2.5; min-width: 180px;"><label>Ürün Durumu:</label><input type="text" id="modalUrunDurumu" list="durumDatalist"></div>
+            <div class="form-group" style="flex: 1; min-width: 90px;"><label>Stok Adedi:</label><select id="modalUrunStok"></select></div>
+            <div class="form-group" style="flex: 1.5; min-width: 110px;"><label>Fiyat (TL):</label><input type="text" id="modalUrunFiyat"></div>
+        </div>
+        <div class="row">
+            <div class="form-group" style="flex: 1.5; min-width: 140px;"><label>Raf / Lokasyon:</label><input type="text" id="modalUrunRafYeri"></div>
+            <div class="form-group" style="flex: 2; min-width: 160px;"><label>Resim Adı:</label><input type="text" id="modalUrunResim"></div>
+            <div class="form-group" style="flex: 4; min-width: 250px;"><label>Ürün Hakkında Not:</label><input type="text" id="modalUrunNotu"></div>
+        </div>
+        
+        <div class="section-box">
+            <div class="section-title"><span>Değişen Parça Numaraları</span><button type="button" class="btn-small" style="background-color: var(--primary);" onclick="modalMuadilEkle()">➕ Yeni Değişen No Ekle</button></div>
+            <div class="dynamic-list" id="modalMuadilKap"></div>
+        </div>
+        <div class="section-box">
+            <div class="section-title"><span>Uyumlu Araç Modelleri</span><button type="button" class="btn-small" style="background-color: var(--primary);" onclick="modalAracSecimKutusuEkle()">➕ Yeni Araç Kutusu Ekle</button></div>
+            <div class="dynamic-list" id="modalAracKap"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-cancel" onclick="modalKapat()">Vazgeç</button>
+            <button class="btn-modal-save" style="background-color: #1e40af; color: white;" onclick="modalVeriGuncelle()">Kaydet</button>
+        </div>
+    </div>
+</div>
+
+<!-- 2. ARAÇ HAVUZ VERİSİ DÜZENLEME MODALI -->
+<div class="modal-backdrop" id="aracDuzenleModal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header"><div class="modal-title">🚗 Araç Havuz Verisi Düzenle</div><div class="modal-close" onclick="aracModalKapat()">&times;</div></div>
+        <input type="hidden" id="modalAracDuzenleIndex">
+        <div class="row">
+            <div class="form-group" style="flex: 2;"><label>Marka:</label><input type="text" id="modalAracMarka"></div>
+            <div class="form-group" style="flex: 3;"><label>Model:</label><input type="text" id="modalAracModel"></div>
+            <div class="form-group" style="flex: 2;"><label>Yıl Aralığı:</label><input type="text" id="modalAracYil"></div>
+        </div>
+        <div class="modal-footer"><button class="btn-modal-cancel" onclick="aracModalKapat()">Vazgeç</button><button class="btn-modal-save" style="background-color: #1e40af; color: white;" onclick="modalAracGuncelle()">Güncelle</button></div>
+    </div>
+</div>
+
+<!-- 3. MARKA DÜZENLEME MODALI -->
+<div class="modal-backdrop" id="markaDuzenleModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header"><div class="modal-title">🏷️ Marka Düzenle</div><div class="modal-close" onclick="markaModalKapat()">&times;</div></div>
+        <input type="hidden" id="modalMarkaDuzenleIndex">
+        <div class="row"><div class="form-group"><label>Marka Adı:</label><input type="text" id="modalMarkaAd"></div></div>
+        <div class="modal-footer"><button class="btn-modal-cancel" onclick="markaModalKapat()">Vazgeç</button><button class="btn-modal-save" style="background-color: #1e40af; color: white;" onclick="modalMarkaGuncelle()">Güncelle</button></div>
+    </div>
+</div>
+
+<!-- 4. DURUM DÜZENLEME MODALI -->
+<div class="modal-backdrop" id="durumDuzenleModal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header"><div class="modal-title">✨ Durum Düzenle</div><div class="modal-close" onclick="durumModalKapat()">&times;</div></div>
+        <input type="hidden" id="modalDurumDuzenleIndex">
+        <div class="row"><div class="form-group"><label>Durum Adı:</label><input type="text" id="modalDurumAd"></div></div>
+        <div class="modal-footer"><button class="btn-modal-cancel" onclick="durumModalKapat()">Vazgeç</button><button class="btn-modal-save" style="background-color: #1e40af; color: white;" onclick="modalDurumGuncelle()">Güncelle</button></div>
+    </div>
+</div>
+
+<div id="loadingEkran" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div id="loadingMetin">Dosya doğrudan çözülüyor ve hafızaya alınıyor, lütfen bekleyin...</div>
+</div>
+
+<script>
+    // VERİ YAPILARI (HARF SERBESTLİĞİ KURALINA GÖRE ESNEKLEŞTİRİLDİ)
+    let parcaListesi = JSON.parse(localStorage.getItem('yedekParcaSonDinamik')) || [];
+    let aracHavuzu = JSON.parse(localStorage.getItem('yedekParcaAracHavuzuNesne')) || [
+        { marka: "Vw", model: "Golf 5", yil: "2004-2008" },
+        { marka: "Renault", model: "Clio 4", yil: "2012-2019" },
+        { marka: "Fiat", model: "Egea", yil: "2015-2023" }
+    ];
+    let markaHavuzu = JSON.parse(localStorage.getItem('yedekParcaMarkaHavuzu')) || ["Vw", "Hella", "Valeo"];
+    let durumHavuzu = JSON.parse(localStorage.getItem('yedekParcaDurumHavuzu')) || ["Sıfır", "Çıkma", "Sökme"];
+
+    // 🚀 PROGRAM İLK AÇILDIĞINDA (ANA SAYFA): ÜSTÜ GİZLE, SADECE ARAMA VE LİSTEYİ GÖSTER
+    window.onload = function() { 
+        stokKutulariniDoldur();
+        datalistleriTazele(); 
+        tabloYenile(); 
+        formAlanlariniSifirla(); 
+        
+        // Açılışta çekmece kapalı başlar: Üst formlar gizlidir
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        const altMenu = document.getElementById('altHavuvMenusu');
+        if (altMenu) altMenu.style.display = 'none';
+        const anaBtn = document.getElementById('anaGirisBtn');
+        if (anaBtn) anaBtn.classList.remove('active');
+        
+        // 🚨 Esnaf Kuralı: Ana sayfada arama motoru ve liste açık gelir!
+        const genelListe = document.getElementById('sabitGenelListeGrubu');
+        if (genelListe) genelListe.style.display = 'block';
+    };
+
+    function stokKutulariniDoldur() {
+        const anaStok = document.getElementById('urunStok');
+        const modalStok = document.getElementById('modalUrunStok');
+        let html = "";
+        for (let i = 0; i <= 100; i++) { html += '<option value="' + i + '">' + i + '</option>'; }
+        if(anaStok) anaStok.innerHTML = html;
+        if(modalStok) modalStok.innerHTML = html;
+        if(anaStok) anaStok.value = "1";
+    }
+
+    // DONMAYI BİTİREN HAFİFLETİLMİŞ KLAVYE DINLEYICISI
+    window.addEventListener('keydown', function(e) { 
+        if (e.key === 'Enter' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'TEXTAREA') { 
+            const mU = document.getElementById('duzenleModal');
+            const mA = document.getElementById('aracDuzenleModal');
+            const mM = document.getElementById('markaDuzenleModal');
+            const mD = document.getElementById('durumDuzenleModal');
+
+            if (mU && mU.style.display === 'flex') { modalVeriGuncelle(); return; }
+            if (mA && mA.style.display === 'flex') { modalAracGuncelle(); return; }
+            if (mM && mM.style.display === 'flex') { modalMarkaGuncelle(); return; }
+            if (mD && mD.style.display === 'flex') { modalDurumGuncelle(); return; }
+            
+            if (e.target.id === 'tabloArama') { tabloAra(); return; }
+            
+            const kp = document.getElementById('yedekParcaSekmesi');
+            const ah = document.getElementById('aracHavuzuSekmesi');
+            const mh = document.getElementById('markaHavuzuSekmesi');
+            const dh = document.getElementById('durumHavuzuSekmesi');
+
+            if (kp && kp.classList.contains('active')) { veriKaydet(); }
+            else if (ah && ah.classList.contains('active')) { aracHavuzunaEkle(); }
+            else if (mh && mh.classList.contains('active')) { markaHavuzaEkle(); }
+            else if (dh && dh.classList.contains('active')) { durumHavuzaEkle(); }
+        } 
+    });
+
+            // 🧠 YEŞİL BUTON: ÜSTÜ KAPATINCA ALTAKİ ARAMAYI ANA SAYFAYA GERİ GETİREN MOTOR
+    function anaSekmeTıklandı() {
+        const altMenu = document.getElementById('altHavuvMenusu');
+        const anaBtn = document.getElementById('anaGirisBtn');
+        const genelListe = document.getElementById('sabitGenelListeGrubu');
+        
+        if (!altMenu) return;
+        
+        // Eğer çekmece açıksa KOMPLE KAPAT (Ana Sayfaya Dön)
+        if (altMenu.style.display === 'flex') {
+            altMenu.style.display = 'none';
+            if (anaBtn) anaBtn.classList.remove('active');
+            
+            // Üstteki form kutularının hepsini gizle
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // 🚨 MÜHÜR: Ana sayfaya dönüldüğü için arama ve son 5 listeyi GERİ GETİR!
+            if (genelListe) genelListe.style.display = 'block';
+        } 
+        // Eğer çekmece kapalıysa AÇ (Formları göster, aramayı gizle)
+        else {
+            altMenu.style.display = 'flex';
+            if (anaBtn) anaBtn.classList.add('active');
+            
+            // Arama ve listeyi gizle ki formlar rahat sığsın
+            if (genelListe) genelListe.style.display = 'none';
+            
+            // En son kalınan sekmeyi veya varsayılan Kayıt ekranını aç
+            const aktifAltBtn = document.querySelector('.sub-tab-btn.active');
+            if (aktifAltBtn) {
+                aktifAltBtn.onclick(); 
+            } else {
+                altSekmeDegistir('yedekParcaSekmesi', document.getElementById('subBtnGiris'));
+            }
+        }
+    }
+
+    // 🧠 ALT SEKMELER ARASINDA GEZERKEN ALTI BOMBOŞ TUTAN MOTOR
+    function altSekmeDegistir(sekmeID, btn) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+        
+        const target = document.getElementById(sekmeID); 
+        if(target) target.classList.add('active');
+        if(btn) btn.classList.add('active');
+        
+        if (sekmeID === 'aracHavuzuSekmesi') { aracTablosuYenile(); }
+        else if (sekmeID === 'markaHavuzuSekmesi') { markaTablosuYenile(); }
+        else if (sekmeID === 'durumHavuzuSekmesi') { durumTablosuYenile(); }
+        
+        // Formlar veya havuzlar açıkken alt taraftaki arama motoru hep gizli kalır
+        const genelListe = document.getElementById('sabitGenelListeGrubu');
+        if (genelListe) {
+            genelListe.style.display = 'none'; 
+        }
+    }
+
+    function bugununTarihi() {
+        const d = new Date();
+        const gun = String(d.getDate()).padStart(2, '0');
+        const ay = String(d.getMonth() + 1).padStart(2, '0');
+        return gun + '.' + ay + '.' + d.getFullYear();
+    }
+
+    function datalistleriTazele() {
+        const dlA = document.getElementById('havuzDatalist'); 
+        if (dlA) {
+            let aracArray = [];
+            aracHavuzu.forEach(function(a, i) { aracArray.push('<option value="' + (i + 1) + ' - ' + a.marka + ' / ' + a.model + ' / ' + a.yil + '"></option>'); });
+            dlA.innerHTML = aracArray.join('');
+        }
+        const dlM = document.getElementById('markaDatalist'); 
+        if (dlM) {
+            let markaArray = [];
+            markaHavuzu.forEach(function(m, i) { markaArray.push('<option value="' + (i + 1) + ' - ' + m + '"></option>'); });
+            dlM.innerHTML = markaArray.join('');
+        }
+        const dlD = document.getElementById('durumDatalist'); 
+        if (dlD) {
+            let durumArray = [];
+            durumHavuzu.forEach(function(d, i) { durumArray.push('<option value="' + (i + 1) + ' - ' + d + '"></option>'); });
+            dlD.innerHTML = durumArray.join('');
+        }
+    }
+
+    function temizMetinAyikla(hamDeger) {
+        if (!hamDeger) return "";
+        let metin = hamDeger.trim();
+        if (/^\d+\s*-\s*/.test(metin)) { metin = metin.replace(/^\d+\s*-\s*/, ''); }
+        return metin.trim();
+    }
+    // ARAÇ HAVUZ TABLOSUNU GÜNCEL LİSTEYLE YENİLEME MOTORU
+    function aracTablosuYenile() {
+        const tbody = document.querySelector('#aracHavuzTablosu tbody'); 
+        if (tbody) {
+            tbody.innerHTML = "";
+            let dizi = [];
+            aracHavuzu.forEach(function(a, i) { 
+                dizi.push('<tr><td class="id-col">' + (i + 1) + '</td><td>' + (a.marka || "-") + '</td><td>' + (a.model || "-") + '</td><td>' + (a.yil || "-") + '</td><td class="action-col"><button class="btn-edit" onclick="aracSatirDuzenle(' + i + ')">Düzenle</button><button class="btn-delete" onclick="aracSatirSil(' + i + ')">Sil</button></td></tr>'); 
+            });
+            tbody.innerHTML = dizi.join('');
+        }
+        const aCount = document.getElementById('aracCount'); if (aCount) aCount.innerText = aracHavuzu.length;
+        const aID = document.getElementById('aracID'); if (aID) aID.value = aracHavuzu.length + 1;
+    }
+
+    function aracSatirSil(i) { 
+        if(confirm("Aracı silmek istediğinize emin misiniz?")) { 
+            aracHavuzu.splice(i, 1); 
+            localStorage.setItem('yedekParcaAracHavuzuNesne', JSON.stringify(aracHavuzu)); 
+            datalistleriTazele(); 
+            aracTablosuYenile(); 
+        } 
+    }
+
+    // MARKA HAVUZ TABLOSUNU GÜNCEL LİSTEYLE YENİLEME MOTORU
+    function markaTablosuYenile() {
+        const tbody = document.querySelector('#markaHavuzTablosu tbody'); 
+        if (tbody) {
+            tbody.innerHTML = "";
+            let dizi = [];
+            markaHavuzu.forEach(function(m, i) { 
+                dizi.push('<tr><td class="id-col">' + (i + 1) + '</td><td>' + (m || "-") + '</td><td class="action-col"><button class="btn-edit" onclick="markaSatirDuzenle(' + i + ')">Düzenle</button><button class="btn-delete" onclick="markaSatirSil(' + i + ')">Sil</button></td></tr>'); 
+            });
+            tbody.innerHTML = dizi.join('');
+        }
+        const mCount = document.getElementById('markaCount'); if (mCount) mCount.innerText = markaHavuzu.length;
+        const mID = document.getElementById('markaID'); if (mID) mID.value = markaHavuzu.length + 1;
+    }
+
+    function markaSatirSil(i) { 
+        if(confirm("Markayı silmek istediğinize emin misiniz?")) { 
+            markaHavuzu.splice(i, 1); 
+            localStorage.setItem('yedekParcaMarkaHavuzu', JSON.stringify(markaHavuzu)); 
+            datalistleriTazele(); 
+            markaTablosuYenile(); 
+        } 
+    }
+
+    // DURUM HAVUZ TABLOSUNU GÜNCEL LİSTEYLE YENİLEME MOTORU
+    function durumTablosuYenile() {
+        const tbody = document.querySelector('#durumHavuzTablosu tbody'); 
+        if (tbody) {
+            tbody.innerHTML = "";
+            let dizi = [];
+            durumHavuzu.forEach(function(d, i) { 
+                dizi.push('<tr><td class="id-col">' + (i + 1) + '</td><td>' + (d || "-") + '</td><td class="action-col"><button class="btn-edit" onclick="durumSatirDuzenle(' + i + ')">Düzenle</button><button class="btn-delete" onclick="durumSatirSil(' + i + ')">Sil</button></td></tr>'); 
+            });
+            tbody.innerHTML = dizi.join('');
+        }
+        const dCount = document.getElementById('durumCount'); if (dCount) dCount.innerText = durumHavuzu.length;
+        const dID = document.getElementById('durumID'); if (dID) dID.value = durumHavuzu.length + 1;
+    }
+
+    function durumSatirSil(i) { 
+        if(confirm("Durumu silmek istediğinize emin misiniz?")) { 
+            durumHavuzu.splice(i, 1); 
+            localStorage.setItem('yedekParcaDurumHavuzu', JSON.stringify(durumHavuzu)); 
+            datalistleriTazele(); 
+            durumTablosuYenile(); 
+        } 
+    }
+
+    // HAVUZLARA EKLEME MOTORLARI
+    function aracHavuzunaEkle() {
+        const m = document.getElementById('aracMarkaInput').value.trim();
+        const mo = document.getElementById('aracModelInput').value.trim();
+        const y = document.getElementById('aracYilInput').value.trim();
+        if(m === "" || mo === "") { alert("Lütfen Marka ve Model alanlarını doldurun!"); return; }
+        aracHavuzu.push({ marka: m, model: mo, yil: y });
+        localStorage.setItem('yedekParcaAracHavuzuNesne', JSON.stringify(aracHavuzu));
+        datalistleriTazele(); aracTablosuYenile();
+        document.getElementById('aracMarkaInput').value = ""; document.getElementById('aracModelInput').value = ""; document.getElementById('aracYilInput').value = "";
+        document.getElementById('aracMarkaInput').focus();
+    }
+
+    function markaHavuzaEkle() {
+        const m = document.getElementById('markaAdInput').value.trim();
+        if(m === "") { alert("Marka adı girin!"); return; }
+        markaHavuzu.push(m);
+        localStorage.setItem('yedekParcaMarkaHavuzu', JSON.stringify(markaHavuzu));
+        datalistleriTazele(); markaTablosuYenile();
+        document.getElementById('markaAdInput').value = ""; document.getElementById('markaAdInput').focus();
+    }
+
+    function durumHavuzaEkle() {
+        const d = document.getElementById('durumAdInput').value.trim();
+        if(d === "") { alert("Durum adı girin!"); return; }
+        durumHavuzu.push(d);
+        localStorage.setItem('yedekParcaDurumHavuzu', JSON.stringify(durumHavuzu));
+        datalistleriTazele(); durumTablosuYenile();
+        document.getElementById('durumAdInput').value = ""; document.getElementById('durumAdInput').focus();
+    }
+    // DİNAMİK KUTU MOTORLARI
+    function muadilEkle() {
+        const kap = document.getElementById('muadilKap'); if(!kap) return;
+        const count = kap.querySelectorAll('.dynamic-item').length + 1;
+        const d = document.createElement('div'); d.className = 'dynamic-item';
+        d.innerHTML = '<input type="text" class="muadil-input" placeholder="Değişen ' + count + '" autocomplete="off">';
+        kap.appendChild(d); d.querySelector('input').focus();
+    }
+
+    function aracSecimKutusuEkle() {
+        const kap = document.getElementById('aracKap'); if(!kap) return;
+        const count = kap.querySelectorAll('.dynamic-item').length + 1;
+        const d = document.createElement('div'); d.className = 'dynamic-item';
+        d.innerHTML = '<input type="text" class="arac-input" list="havuzDatalist" placeholder="Araç ' + count + '" autocomplete="off">';
+        kap.appendChild(d); d.querySelector('input').focus();
+    }
+
+    function modalMuadilEkle() {
+        const kap = document.getElementById('modalMuadilKap'); if(!kap) return;
+        const count = kap.querySelectorAll('.dynamic-item').length + 1;
+        const d = document.createElement('div'); d.className = 'dynamic-item';
+        d.innerHTML = '<input type="text" class="muadil-input" placeholder="Değişen ' + count + '" autocomplete="off">';
+        kap.appendChild(d); d.querySelector('input').focus();
+    }
+
+    function modalAracSecimKutusuEkle() {
+        const kap = document.getElementById('modalAracKap'); if(!kap) return;
+        const count = kap.querySelectorAll('.dynamic-item').length + 1;
+        const d = document.createElement('div'); d.className = 'dynamic-item';
+        d.innerHTML = '<input type="text" class="arac-input" list="havuzDatalist" placeholder="Araç ' + count + '" autocomplete="off">';
+        kap.appendChild(d); d.querySelector('input').focus();
+    }
+
+    function formAlanlariniSifirla() {
+        if(document.getElementById('urunID')) document.getElementById('urunID').value = "";
+        if(document.getElementById('stokKodu')) document.getElementById('stokKodu').value = ""; 
+        if(document.getElementById('parcaAdi')) document.getElementById('parcaAdi').value = "";
+        if(document.getElementById('marka')) document.getElementById('marka').value = ""; 
+        if(document.getElementById('urunDurumu')) document.getElementById('urunDurumu').value = "";
+        if(document.getElementById('urunStok')) document.getElementById('urunStok').value = "1"; 
+        if(document.getElementById('urunFiyat')) document.getElementById('urunFiyat').value = "";
+        if(document.getElementById('urunRafYeri')) document.getElementById('urunRafYeri').value = ""; 
+        if(document.getElementById('urunResim')) document.getElementById('urunResim').value = ""; 
+        if(document.getElementById('urunNotu')) document.getElementById('urunNotu').value = "";
+        
+        const mKap = document.getElementById('muadilKap');
+        if(mKap) mKap.innerHTML = '<div class="dynamic-item"><input type="text" class="muadil-input" placeholder="Değişen 1" autocomplete="off"></div>';
+        
+        const aKap = document.getElementById('aracKap');
+        if(aKap) aKap.innerHTML = '<div class="dynamic-item"><input type="text" class="arac-input" list="havuzDatalist" placeholder="Araç 1" autocomplete="off"></div>';
+    }
+
+    // ÇAPRAZ MÜKERRER KONTROL MOTORLARI
+    function stokKoduCanliKontrol(yazilanKod) {
+        if (!yazilanKod || yazilanKod.trim() === "" || yazilanKod.trim() === "-") return true;
+        const aranan = yazilanKod.trim().toUpperCase();
+        for (let i = 0; i < parcaListesi.length; i++) {
+            const p = parcaListesi[i];
+            if (p.sku && p.sku.trim().toUpperCase() === aranan) {
+                alert("⚠️ DİKKAT: Bu kod daha önce KULLANILMIŞ!\n\nBulunduğu Ürün No: " + p.id + "\nÜrün Adı: " + p.ad + "\nKullanım Yeri: Ana Stok Kodu (SKU)");
+                if(document.getElementById('tabloArama')) document.getElementById('tabloArama').value = yazilanKod.trim();
+                tabloAra();
+                return false;
+            }
+            if (p.muadiller && p.muadiller.length > 0) {
+                for (let m = 0; m < p.muadiller.length; m++) {
+                    if (p.muadiller[m] && p.muadiller[m].trim() !== "-" && p.muadiller[m].trim().toUpperCase() === aranan) {
+                        alert("⚠️ DİKKAT: Bu kod daha önce KULLANILMIŞ!\n\nBulunduğu Ürün No: " + p.id + "\nÜrün Adı: " + p.ad + "\nKullanım Yeri: Değişen " + (m + 1));
+                        if(document.getElementById('tabloArama')) document.getElementById('tabloArama').value = yazilanKod.trim();
+                        tabloAra();
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    function stokKoduCanliKontrolModal(yazilanKod) {
+        if (!yazilanKod || yazilanKod.trim() === "" || yazilanKod.trim() === "-") return true;
+        const aranan = yazilanKod.trim().toUpperCase();
+        const suAnkiIndex = document.getElementById('modalDuzenleIndex').value;
+        for (let i = 0; i < parcaListesi.length; i++) {
+            if (parseInt(i) === parseInt(suAnkiIndex)) continue;
+            const p = parcaListesi[i];
+            if (p.sku && p.sku.trim().toUpperCase() === aranan) {
+                alert("⚠️ UYARI: Bu kod başka bir üründe Ana Stok Kodu (SKU) olarak mevcut! Ürün No: " + p.id);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // ANA VERİ KAYDETME MEKANİZMASI
+    function veriKaydet() {
+        const id = document.getElementById('urunID').value.trim();
+        const sku = document.getElementById('stokKodu').value.trim();
+        const ad = document.getElementById('parcaAdi').value.trim();
+        if (id === "" || sku === "" || ad === "") { alert("Ürün No, Stok Kodu ve Ürün Adı alanları zorunludur!"); return; }
+        if (!stokKoduCanliKontrol(sku)) return;
+        
+        const mrk = temizMetinAyikla(document.getElementById('marka').value) || "-";
+        const drm = temizMetinAyikla(document.getElementById('urunDurumu').value) || "-";
+        const stk = document.getElementById('urunStok').value;
+        const fyt = document.getElementById('urunFiyat').value.trim() || "-";
+        const raf = document.getElementById('urunRafYeri').value.trim() || "-";
+        const rsm = document.getElementById('urunResim').value.trim() || "-";
+        const not = document.getElementById('urunNotu').value.trim() || "-";
+        
+        let muadiller = []; document.querySelectorAll('#muadilKap .muadil-input').forEach(function(k) { muadiller.push(k.value.trim() !== "" ? k.value.trim() : "-"); });
+        let araclar = []; document.querySelectorAll('#aracKap .arac-input').forEach(function(k) { const tA = temizMetinAyikla(k.value); araclar.push(tA !== "" ? tA : "-"); });
+
+        parcaListesi.push({ id: id, sku: sku, ad: ad, mrk: mrk, durum: drm, stok: stk, fiyat: fyt, raf: raf, resim: rsm, not: not, muadiller: muadiller, araclar: araclar, tarih: bugununTarihi() });
+        localStorage.setItem('yedekParcaSonDinamik', JSON.stringify(parcaListesi));
+        
+        if(document.getElementById('aramaSonuclariPaneli').style.display === 'block') tabloAra();
+        tabloYenile(); formAlanlariniSifirla(); document.getElementById('stokKodu').focus();
+    }
+    // DONMAYI BİTİREN REFRESH MOTORLARI
+    function tabloYenile() {
+        const tbody = document.querySelector('#veritabani tbody'); if (!tbody) return;
+        const sonBesUrun = [...parcaListesi].reverse().slice(0, 5);
+        let tabloIcerikDizisi = [];
+        sonBesUrun.forEach(function(p) {
+            const gercekIndex = parcaListesi.indexOf(p);
+            const degisenlerMetni = (p.muadiller && p.muadiller.length > 0) ? p.muadiller.join(', ') : "-";
+            const araclarMetni = (p.araclar && p.araclar.length > 0) ? p.araclar.join(', ') : "-";
+            tabloIcerikDizisi.push('<tr><td class="id-col">'+(p.id||"-")+'</td><td><b>'+(p.sku||"-")+'</b></td><td>'+(p.ad||"-")+'</td><td>'+(p.mrk||"-")+'</td><td>'+(p.durum||"-")+'</td><td>'+(p.stok||"0")+'</td><td>'+(p.fiyat||"-")+' TL</td><td>'+(p.raf||"-")+'</td><td>'+(p.resim||"-")+'</td><td>'+degisenlerMetni+'</td><td>'+araclarMetni+'</td><td>'+(p.not||"-")+'</td><td class="date-col">'+(p.tarih||bugununTarihi())+'</td><td class="action-col"><button class="btn-edit" onclick="parcaDuzenleAc('+gercekIndex+')">🔧 Düzenle</button><button class="btn-delete" onclick="parcaSil('+gercekIndex+')">❌ Sil</button></td></tr>');
+        });
+        tbody.innerHTML = tabloIcerikDizisi.join('');
+        const rCount = document.getElementById('recordCount'); if (rCount) rCount.innerText = parcaListesi.length;
+    }
+
+    function tabloAra() {
+        const aramaGirdisi = document.getElementById('tabloArama'); if (!aramaGirdisi) return;
+        const arananKelime = aramaGirdisi.value.trim().toUpperCase();
+        const panel = document.getElementById('aramaSonuclariPaneli');
+        const tbody = document.querySelector('#aramaTablosu tbody'); if (!tbody || !panel) return;
+        tbody.innerHTML = "";
+        if (arananKelime === "") { panel.style.display = 'none'; return; }
+        let bulunanAdet = 0; let dizi = [];
+        parcaListesi.forEach(function(p, i) {
+            const idEslesti = p.id && p.id.trim().toUpperCase().includes(arananKelime);
+            const skuEslesti = p.sku && p.sku.trim().toUpperCase().includes(arananKelime);
+            let degisenEslesti = p.muadiller && p.muadiller.some(m => m !== "-" && m.trim().toUpperCase().includes(arananKelime));
+            if (idEslesti || skuEslesti || degisenEslesti) {
+                bulunanAdet++;
+                const degisenlerMetni = (p.muadiller && p.muadiller.length > 0) ? p.muadiller.join(', ') : "-";
+                const araclarMetni = (p.araclar && p.araclar.length > 0) ? p.araclar.join(', ') : "-";
+                dizi.push('<tr><td class="id-col">'+(p.id||"-")+'</td><td><b>'+(p.sku||"-")+'</b></td><td>'+(p.ad||"-")+'</td><td>'+(p.mrk||"-")+'</td><td>'+(p.durum||"-")+'</td><td>'+(p.stok||"0")+'</td><td>'+(p.fiyat||"-")+' TL</td><td>'+(p.raf||"-")+'</td><td>'+(p.resim||"-")+'</td><td>'+degisenlerMetni+'</td><td>'+araclarMetni+'</td><td>'+(p.not||"-")+'</td><td class="date-col">'+(p.tarih||bugununTarihi())+'</td><td class="action-col"><button class="btn-edit" onclick="parcaDuzenleAc('+i+')">🔧 Düzenle</button><button class="btn-delete" onclick="parcaSil('+i+')">❌ Sil</button></td></tr>');
+            }
+        });
+        if (bulunanAdet > 0) { panel.style.display = 'block'; tbody.innerHTML = dizi.join(''); } else { panel.style.display = 'none'; alert("Aradığınız kriterlere uygun parça bulunamadı!"); }
+    }
+
+    function parcaSil(i) { if (confirm("Bu yedek parçayı sistemden tamamen silmek istediğinize emin misiniz?")) { parcaListesi.splice(i, 1); localStorage.setItem('yedekParcaSonDinamik', JSON.stringify(parcaListesi)); tabloYenile(); if(document.getElementById('aramaSonuclariPaneli').style.display === 'block') tabloAra(); } }
+    // MODAL YÖNETİM MOTORLARI
+    function parcaDuzenleAc(i) {
+        const p = parcaListesi[i]; if (!p) return;
+        document.getElementById('modalDuzenleIndex').value = i;
+        document.getElementById('modalUrunID').value = p.id || "-";
+        document.getElementById('modalStokKodu').value = p.sku || "-";
+        document.getElementById('modalParcaAdi').value = p.ad || "-";
+        document.getElementById('modalMarka').value = p.mrk || "-";
+        document.getElementById('modalUrunDurumu').value = p.durum || "-";
+        document.getElementById('modalUrunStok').value = p.stok || "0";
+        document.getElementById('modalUrunFiyat').value = p.fiyat || "-";
+        document.getElementById('modalUrunRafYeri').value = p.raf || "-";
+        document.getElementById('modalUrunResim').value = p.resim || "-";
+        document.getElementById('modalUrunNotu').value = p.not || "-";
+        const mKap = document.getElementById('modalMuadilKap'); if (mKap) { mKap.innerHTML = ""; (p.muadiller||["-"]).forEach(function(m, idx) { const d = document.createElement('div'); d.className = 'dynamic-item'; d.innerHTML = '<input type="text" class="muadil-input" value="' + m + '" placeholder="Değişen ' + (idx + 1) + '" autocomplete="off">'; mKap.appendChild(d); }); }
+        const aKap = document.getElementById('modalAracKap'); if (aKap) { aKap.innerHTML = ""; (p.araclar||["-"]).forEach(function(a, idx) { const d = document.createElement('div'); d.className = 'dynamic-item'; d.innerHTML = '<input type="text" class="arac-input" list="havuzDatalist" value="' + a + '" placeholder="Araç ' + (idx + 1) + '" autocomplete="off">'; aKap.appendChild(d); }); }
+        const modal = document.getElementById('duzenleModal'); if (modal) modal.style.display = 'flex';
+    }
+
+    function modalVeriGuncelle() {
+        const i = document.getElementById('modalDuzenleIndex').value; if (i === "") return;
+        const sku = document.getElementById('modalStokKodu').value.trim(); const ad = document.getElementById('modalParcaAdi').value.trim();
+        if (sku === "" || ad === "") { alert("Stok Kodu ve Ürün Adı alanları zorunludur!"); return; }
+        if (!stokKoduCanliKontrolModal(sku)) return;
+        parcaListesi[i].id = document.getElementById('modalUrunID').value.trim() || "-"; parcaListesi[i].sku = sku; parcaListesi[i].ad = ad;
+        parcaListesi[i].mrk = temizMetinAyikla(document.getElementById('modalMarka').value) || "-"; parcaListesi[i].durum = temizMetinAyikla(document.getElementById('modalUrunDurumu').value) || "-";
+        parcaListesi[i].stok = document.getElementById('modalUrunStok').value; parcaListesi[i].fiyat = document.getElementById('modalUrunFiyat').value.trim() || "-";
+        parcaListesi[i].raf = document.getElementById('modalUrunRafYeri').value.trim() || "-"; parcaListesi[i].resim = document.getElementById('modalUrunResim').value.trim() || "-"; parcaListesi[i].not = document.getElementById('modalUrunNotu').value.trim() || "-";
+        let muadiller = []; document.querySelectorAll('#modalMuadilKap .muadil-input').forEach(function(k) { muadiller.push(k.value.trim() !== "" ? k.value.trim() : "-"); }); parcaListesi[i].muadiller = muadiller;
+        let araclar = []; document.querySelectorAll('#modalAracKap .arac-input').forEach(function(k) { const tA = temizMetinAyikla(k.value); araclar.push(tA !== "" ? tA : "-"); }); parcaListesi[i].araclar = araclar;
+        localStorage.setItem('yedekParcaSonDinamik', JSON.stringify(parcaListesi)); modalKapat(); tabloYenile(); if(document.getElementById('aramaSonuclariPaneli').style.display === 'block') tabloAra();
+    }
+
+    function modalKapat() { const modal = document.getElementById('duzenleModal'); if (modal) modal.style.display = 'none'; }
+    function aracSatirDuzenle(i) { const a = aracHavuzu[i]; if (!a) return; document.getElementById('modalAracDuzenleIndex').value = i; document.getElementById('modalAracMarka').value = a.marca || a.marka || "-"; document.getElementById('modalAracModel').value = a.model || "-"; document.getElementById('modalAracYil').value = a.yil || "-"; const modal = document.getElementById('aracDuzenleModal'); if (modal) modal.style.display = 'flex'; }
+    function modalAracGuncelle() { const i = document.getElementById('modalAracDuzenleIndex').value; if (i === "") return; const m = document.getElementById('modalAracMarka').value.trim(); const mo = document.getElementById('modalAracModel').value.trim(); const y = document.getElementById('modalAracYil').value.trim(); if (m === "" || mo === "") { alert("Marka ve Model boş bırakılamaz!"); return; } aracHavuzu[i] = { marka: m, model: mo, yil: y }; localStorage.setItem('yedekParcaAracHavuzuNesne', JSON.stringify(aracHavuzu)); aracModalKapat(); aracTablosuYenile(); datalistleriTazele(); }
+    function aracModalKapat() { const modal = document.getElementById('aracDuzenleModal'); if (modal) modal.style.display = 'none'; }
+    function markaSatirDuzenle(i) { const m = markaHavuzu[i]; if (!m) return; document.getElementById('modalMarkaDuzenleIndex').value = i; document.getElementById('modalMarkaAd').value = m || "-"; const modal = document.getElementById('markaDuzenleModal'); if (modal) modal.style.display = 'flex'; }
+    function modalMarkaGuncelle() { const i = document.getElementById('modalMarkaDuzenleIndex').value; if (i === "") return; const m = document.getElementById('modalMarkaAd').value.trim(); if (m === "") { alert("Marka adı boş bırakılamaz!"); return; } markaHavuzu[i] = m; localStorage.setItem('yedekParcaMarkaHavuzu', JSON.stringify(markaHavuzu)); markaModalKapat(); markaTablosuYenile(); datalistleriTazele(); }
+    function markaModalKapat() { const modal = document.getElementById('markaDuzenleModal'); if (modal) modal.style.display = 'none'; }
+    function durumSatirDuzenle(i) { const d = durumHavuzu[i]; if (!d) return; document.getElementById('modalDurumDuzenleIndex').value = i; document.getElementById('modalDurumAd').value = d || "-"; const modal = document.getElementById('durumDuzenleModal'); if (modal) modal.style.display = 'flex'; }
+    function modalDurumGuncelle() { const i = document.getElementById('modalDurumDuzenleIndex').value; if (i === "") return; const d = document.getElementById('modalDurumAd').value.trim(); if (d === "") { alert("Durum adı boş bırakılamaz!"); return; } durumHavuzu[i] = d; localStorage.setItem('yedekParcaDurumHavuzu', JSON.stringify(durumHavuzu)); durumModalKapat(); durumTablosuYenile(); datalistleriTazele(); }
+    function durumModalKapat() { const modal = document.getElementById('durumDuzenleModal'); if (modal) modal.style.display = 'none'; }
+    // 📥 %100 INTERNETSIZ BILDIRIMLI JSON TRANSFER MOTORLARI
+    function topluParcaYukle() {
+        const fi = document.getElementById('csvDosyaSec'); if (!fi || fi.files.length === 0) return alert("JSON dosyası seçin!");
+        yukleniyorGoster("Parçalar anında çözülüyor...");
+        const reader = new FileReader(); reader.onload = function(e) {
+            try {
+                const rows = JSON.parse(e.target.result); let eklenen = 0;
+                rows.forEach(satir => {
+                    const id = String(satir.id || satir["Ürün No"] || "").trim();
+                    const sku = String(satir.sku || satir["Stok Kodu"] || "").trim();
+                    const ad = String(satir.ad || satir["Ürün Adı"] || "").trim();
+                    if (id !== "" && sku !== "" && ad !== "") {
+                        parcaListesi.push({ id: id, sku: sku, ad: ad, mrk: String(satir.mrk||satir.Marka||"-"), durum: String(satir.durum||satir.Durum||"-"), stok: String(satir.stok||"1"), fiyat: String(satir.fiyat||"-"), raf: String(satir.raf||"-"), resim: String(satir.resim||"-"), not: String(satir.not||"-"), muadiller: Array.isArray(satir.muadiller)?satir.muadiller:["-"], araclar: Array.isArray(satir.araclar)?satir.araclar:["-"], tarih: bugununTarihi() });
+                        eklenen++;
+                    }
+                });
+                localStorage.setItem('yedekParcaSonDinamik', JSON.stringify(parcaListesi)); tabloYenile(); yukleniyorGizle(); alert("💾 BAŞARILI!\n\n"+eklenen+" adet parça donmadan akıllı hafızaya yüklendi."); fi.value = "";
+            } catch (h) { yukleniyorGizle(); alert("Geçersiz JSON formatı!"); }
+        }; reader.readAsText(fi.files);
+    }
+
+    function dosyaIndirYenilenmis() {
+        if (parcaListesi.length === 0) return alert("Hafıza boş!");
+        const dosyaAdi = "yedek_parca_depo_yedek.json";
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(parcaListesi, null, 2));
+        const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", dosyaAdi); document.body.appendChild(a); a.click(); a.remove();
+        alert("💾 YEDEKLEME BAŞARILI!\n\n"+parcaListesi.length+" adet ürün verisi json olarak indirildi.");
+    }
+
+    function ornekParcaSablonuIndir() {
+        const sablon = [{"id": "WOLKSTEK-1", "sku": "1K0121251BR", "ad": "Radyatör Su Deposu", "mrk": "Vw", "durum": "Sıfır", "stok": "5", "fiyat": "1250", "raf": "A-12", "resim": "passat.jpg", "muadiller": ["1K0121251C"], "araclar": ["Golf 5"], "not": "Garantili Yan Sanayi"}];
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sablon, null, 2));
+        const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "ornek_urun_sablonu.json"); document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    function ornekAracSablonuIndir() { const s = [{"marka": "Vw", "model": "Golf 5", "yil": "2004-2008"}]; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(s, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "ornek_arac_sablonu.json"); document.body.appendChild(a); a.click(); a.remove(); }
+    function topluAracYukle() { const fi = document.getElementById('aracExcelSec'); if (!fi || fi.files.length === 0) return alert("Dosya seçin!"); const reader = new FileReader(); reader.onload = function(e) { try { const rows = JSON.parse(e.target.result); let ek = 0; rows.forEach(r => { if(r.marka && r.model) { aracHavuzu.push({marka: r.marka, model: r.model, yil: r.yil||"-"}); ek++; } }); localStorage.setItem('yedekParcaAracHavuzuNesne', JSON.stringify(aracHavuzu)); datalistleriTazele(); aracTablosuYenile(); alert("🚗 " + ek + " araç havuz verisi yüklendi."); fi.value=""; } catch(h) { alert("Hata!"); } }; reader.readAsText(fi.files); }
+    function aracHavuzunuIndir() { if(aracHavuzu.length===0) return alert("Boş!"); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(aracHavuzu, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "arac_havuz_listesi.json"); document.body.appendChild(a); a.click(); a.remove(); alert("💾 Araç yedeklendi! Toplam: " + aracHavuzu.length); }
+    function ornekMarkaSablonuIndir() { const s = ["Hella"]; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(s, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "ornek_marka_sablonu.json"); document.body.appendChild(a); a.click(); a.remove(); }
+    function topluMarkaYukle() { const fi = document.getElementById('markaExcelSec'); if (!fi || fi.files.length === 0) return alert("Dosya seçin!"); const reader = new FileReader(); reader.onload = function(e) { try { const rows = JSON.parse(e.target.result); let ek = 0; rows.forEach(r => { const m = typeof r === "string" ? r : (r["Marka Adı"]||r.marka); if(m) { markaHavuzu.push(String(m).trim()); ek++; } }); localStorage.setItem('yedekParcaMarkaHavuzu', JSON.stringify(markaHavuzu)); datalistleriTazele(); markaTablosuYenile(); alert("🏷️ " + ek + " marka verisi yüklendi."); fi.value=""; } catch(h) { alert("Hata!"); } }; reader.readAsText(fi.files); }
+    function markaHavuzunuIndir() { if(markaHavuzu.length===0) return alert("Boş!"); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(markaHavuzu, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "marka_havuz_listesi.json"); document.body.appendChild(a); a.click(); a.remove(); alert("💾 Marka yedeklendi! Toplam: " + markaHavuzu.length); }
+
+    // HAVUZ KAPANIS MOTORLARI
+    function ornekDurumSablonuIndir() { const s = ["Sıfır"]; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(s, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "ornek_durum_sablonu.json"); document.body.appendChild(a); a.click(); a.remove(); }
+    function topluDurumYukle() { const fi = document.getElementById('durumExcelSec'); if (!fi || fi.files.length === 0) return alert("Dosya seçin!"); const reader = new FileReader(); reader.onload = function(e) { try { const rows = JSON.parse(e.target.result); let ek = 0; rows.forEach(r => { const d = typeof r === "string" ? r : (r["Durum Adı"]||r.durum); if(d) { durumHavuzu.push(String(d).trim()); ek++; } }); localStorage.setItem('yedekParcaDurumHavuzu', JSON.stringify(durumHavuzu)); datalistleriTazele(); durumTablosuYenile(); alert("✨ " + ek + " durum verisi yüklendi."); fi.value=""; } catch(h) { alert("Hata!"); } }; reader.readAsText(fi.files); }
+    function durumHavuzunuIndir() { if(durumHavuzu.length===0) return alert("Boş!"); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(durumHavuzu, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "durum_havuz_listesi.json"); document.body.appendChild(a); a.click(); a.remove(); alert("💾 Durum yedeklendi! Toplam: " + durumHavuzu.length); }
+
+    function yukleniyorGoster(m) { const o = document.getElementById('loadingEkran'); const t = document.getElementById('loadingMetin'); if (t) t.innerText = m; if (o) o.style.display = 'flex'; }
+    function yukleniyorGizle() { const o = document.getElementById('loadingEkran'); if (o) o.style.display = 'none'; }
+
+    function hafizaSifirla() {
+        if (confirm("DİKKAT: Tüm verileriniz kalıcı olarak silinecektir!\n\nEmin misiniz?")) {
+            localStorage.clear(); parcaListesi = []; aracHavuzu = []; markaHavuzu = []; durumHavuzu = [];
+            datalistleriTazele(); aracTablosuYenile(); markaTablosuYenile(); durumTablosuYenile(); formAlanlariniSifirla(); tabloYenile();
+            if(document.getElementById('aramaSonuclariPaneli')) document.getElementById('aramaSonuclariPaneli').style.display = 'none';
+            alert("Sistem sıfırlandı!");
+        }
+    }
+</script>
+</body>
+</html>
