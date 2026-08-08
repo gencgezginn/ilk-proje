@@ -822,443 +822,1914 @@ if (e.key.toLowerCase() === 'enter' && e.target.tagName !== 'BUTTON' && e.target
     }
 
     function parcaSil(i) { if (confirm("Bu yedek parçayı sistemden tamamen silmek istediğinize emin misiniz?")) { parcaListesi.splice(i, 1); localStorage.setItem('yedekParcaSonDinamik', JSON.stringify(parcaListesi)); tabloYenile(); if(document.getElementById('aramaSonuclariPaneli').style.display === 'block') tabloAra(); } }
- // --- TEKE DÜŞÜRÜLMÜŞ AKILLI KONTROL FONKSİYONLARI ---
- 
-function akilliButonGozculugu() {
-    setTimeout(function() {
-        const btn = document.getElementById('modalKaydetBtn');
-        const guncelVeri = yakalaEkrandakiMevcutVeriler();
-        
-        if (guncelVeri !== orjinalVeriHafizasi) {
-            btn.disabled = false;
-            btn.style.backgroundColor = "#1e40af"; // Değişiklik varsa mavi
-        } else {
+     // ============================================================
+    // PARÇA DÜZENLEME / GÜNCELLEME SİSTEMİ
+    // ============================================================
+
+    let orjinalVeriHafizasi = "";
+
+    function modalDeger(id, varsayilan = "") {
+        const el = document.getElementById(id);
+        return el ? el.value : varsayilan;
+    }
+
+    function diziTemizle(dizi) {
+        if (!Array.isArray(dizi)) return [];
+
+        return dizi
+            .map(function(deger) {
+                return String(deger ?? "").trim();
+            })
+            .filter(function(deger) {
+                return deger !== "" && deger !== "-";
+            });
+    }
+
+    // Modalda bulunan bütün alanların mevcut durumunu yakalar.
+    // JSON kullanıldığı için "ABC"+"DEF" gibi hatalı karşılaştırmalar olmaz.
+    function yakalaEkrandakiMevcutVeriler() {
+
+        const muadiller = [];
+
+        document.querySelectorAll(
+            '#modalMuadilKap .muadil-input'
+        ).forEach(function(input) {
+            const deger = input.value.trim();
+
+            if (deger !== "") {
+                muadiller.push(deger);
+            }
+        });
+
+        const araclar = [];
+
+        document.querySelectorAll(
+            '#modalAracKap .arac-input'
+        ).forEach(function(input) {
+            const deger = temizMetinAyikla(input.value);
+
+            if (deger !== "") {
+                araclar.push(deger);
+            }
+        });
+
+        return JSON.stringify({
+            id: modalDeger("modalUrunID").trim(),
+            sku: modalDeger("modalStokKodu").trim(),
+            ad: modalDeger("modalParcaAdi").trim(),
+            mrk: modalDeger("modalMarka").trim(),
+            durum: modalDeger("modalUrunDurumu").trim(),
+            stok: modalDeger("modalUrunStok"),
+            fiyat: modalDeger("modalUrunFiyat").trim(),
+            raf: modalDeger("modalUrunRafYeri").trim(),
+            resim: modalDeger("modalUrunResim").trim(),
+            not: modalDeger("modalUrunNotu").trim(),
+            muadiller: muadiller,
+            araclar: araclar
+        });
+    }
+
+
+    // ============================================================
+    // PARÇA DÜZENLE MODALINI AÇ
+    // ============================================================
+
+    function parcaDuzenleAc(i) {
+
+        const p = parcaListesi[i];
+
+        if (!p) {
+            alert("Düzenlenecek parça bulunamadı!");
+            return;
+        }
+
+        const indexEl = document.getElementById(
+            'modalDuzenleIndex'
+        );
+
+        if (indexEl) {
+            indexEl.value = i;
+        }
+
+        // --------------------------------------------------------
+        // ANA ALANLAR
+        // --------------------------------------------------------
+
+        document.getElementById('modalUrunID').value =
+            p.id || "";
+
+        document.getElementById('modalStokKodu').value =
+            p.sku || "";
+
+        document.getElementById('modalParcaAdi').value =
+            p.ad || "";
+
+        document.getElementById('modalMarka').value =
+            p.mrk && p.mrk !== "-" ? p.mrk : "";
+
+        document.getElementById('modalUrunDurumu').value =
+            p.durum && p.durum !== "-" ? p.durum : "";
+
+        document.getElementById('modalUrunStok').value =
+            p.stok || "0";
+
+        document.getElementById('modalUrunFiyat').value =
+            p.fiyat && p.fiyat !== "-" ? p.fiyat : "";
+
+        document.getElementById('modalUrunRafYeri').value =
+            p.raf && p.raf !== "-" ? p.raf : "";
+
+        // RESİM ALANI DA ARTIK DOLDURULUYOR
+        document.getElementById('modalUrunResim').value =
+            p.resim && p.resim !== "-" ? p.resim : "";
+
+        document.getElementById('modalUrunNotu').value =
+            p.not && p.not !== "-" ? p.not : "";
+
+
+        // --------------------------------------------------------
+        // MUADİL / DEĞİŞEN PARÇALAR
+        // --------------------------------------------------------
+
+        const mKap = document.getElementById('modalMuadilKap');
+
+        if (mKap) {
+
+            mKap.innerHTML = "";
+
+            const liste =
+                Array.isArray(p.muadiller) &&
+                p.muadiller.length > 0
+                    ? p.muadiller
+                    : [""];
+
+            liste.forEach(function(deger, index) {
+
+                const kapsayici =
+                    document.createElement('div');
+
+                kapsayici.className = 'dynamic-item';
+
+                const input =
+                    document.createElement('input');
+
+                input.type = 'text';
+                input.className = 'muadil-input';
+                input.placeholder =
+                    'Değişen ' + (index + 1);
+                input.autocomplete = 'off';
+
+                input.value =
+                    deger === "-" ? "" : (deger || "");
+
+                input.addEventListener(
+                    'input',
+                    akilliButonGozculugu
+                );
+
+                kapsayici.appendChild(input);
+                mKap.appendChild(kapsayici);
+            });
+        }
+
+
+        // --------------------------------------------------------
+        // ARAÇLAR
+        // --------------------------------------------------------
+
+        const aKap = document.getElementById('modalAracKap');
+
+        if (aKap) {
+
+            aKap.innerHTML = "";
+
+            const liste =
+                Array.isArray(p.araclar) &&
+                p.araclar.length > 0
+                    ? p.araclar
+                    : [""];
+
+            liste.forEach(function(deger, index) {
+
+                const kapsayici =
+                    document.createElement('div');
+
+                kapsayici.className = 'dynamic-item';
+
+                const input =
+                    document.createElement('input');
+
+                input.type = 'text';
+                input.className = 'arac-input';
+                input.setAttribute(
+                    'list',
+                    'havuzDatalist'
+                );
+
+                input.placeholder =
+                    'Araç ' + (index + 1);
+
+                input.autocomplete = 'off';
+
+                input.value =
+                    deger === "-" ? "" : (deger || "");
+
+                input.addEventListener(
+                    'input',
+                    akilliButonGozculugu
+                );
+
+                kapsayici.appendChild(input);
+                aKap.appendChild(kapsayici);
+            });
+        }
+
+
+        // --------------------------------------------------------
+        // DEĞİŞİKLİK HAFIZASI
+        // --------------------------------------------------------
+
+        orjinalVeriHafizasi =
+            yakalaEkrandakiMevcutVeriler();
+
+        const kaydetBtn =
+            document.getElementById('modalKaydetBtn');
+
+        if (kaydetBtn) {
+
+            kaydetBtn.disabled = true;
+
+            kaydetBtn.style.backgroundColor =
+                "#64748b";
+
+            kaydetBtn.style.cursor =
+                "not-allowed";
+        }
+
+
+        // --------------------------------------------------------
+        // MODALI AÇ
+        // --------------------------------------------------------
+
+        const modal =
+            document.getElementById('duzenleModal');
+
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+
+    // ============================================================
+    // KAYDET BUTONU DEĞİŞİKLİK KONTROLÜ
+    // ============================================================
+
+    function akilliButonGozculugu() {
+
+        setTimeout(function() {
+
+            const btn =
+                document.getElementById(
+                    'modalKaydetBtn'
+                );
+
+            if (!btn) return;
+
+            const guncelVeri =
+                yakalaEkrandakiMevcutVeriler();
+
+            const degisti =
+                guncelVeri !== orjinalVeriHafizasi;
+
+            btn.disabled = !degisti;
+
+            if (degisti) {
+
+                btn.style.backgroundColor =
+                    "#1e40af";
+
+                btn.style.cursor =
+                    "pointer";
+
+            } else {
+
+                btn.style.backgroundColor =
+                    "#64748b";
+
+                btn.style.cursor =
+                    "not-allowed";
+            }
+
+        }, 50);
+    }
+
+
+    // ============================================================
+    // PARÇA GÜNCELLEME
+    // ============================================================
+
+    function modalVeriGuncelle() {
+
+        const indexEl =
+            document.getElementById(
+                'modalDuzenleIndex'
+            );
+
+        if (!indexEl ||
+            indexEl.value === "") {
+
+            alert(
+                "Düzenlenecek parça bulunamadı!"
+            );
+
+            return;
+        }
+
+        const i =
+            parseInt(indexEl.value, 10);
+
+        if (
+            Number.isNaN(i) ||
+            !parcaListesi[i]
+        ) {
+
+            alert(
+                "Düzenlenecek parça bulunamadı!"
+            );
+
+            return;
+        }
+
+
+        // --------------------------------------------------------
+        // ZORUNLU ALANLAR
+        // --------------------------------------------------------
+
+        const id =
+            document.getElementById(
+                'modalUrunID'
+            ).value.trim();
+
+        const sku =
+            document.getElementById(
+                'modalStokKodu'
+            ).value.trim();
+
+        const ad =
+            document.getElementById(
+                'modalParcaAdi'
+            ).value.trim();
+
+
+        if (id === "" ||
+            sku === "" ||
+            ad === "") {
+
+            alert(
+                "Ürün No, Stok Kodu ve Ürün Adı boş bırakılamaz!"
+            );
+
+            return;
+        }
+
+
+        // --------------------------------------------------------
+        // SKU MÜKERRER KONTROLÜ
+        // --------------------------------------------------------
+
+        if (
+            stokKoduCanliKontrolModal(sku)
+            === false
+        ) {
+            return;
+        }
+
+
+        // --------------------------------------------------------
+        // DİĞER ALANLAR
+        // --------------------------------------------------------
+
+        const mrk =
+            temizMetinAyikla(
+                document.getElementById(
+                    'modalMarka'
+                ).value
+            ) || "-";
+
+        const durum =
+            temizMetinAyikla(
+                document.getElementById(
+                    'modalUrunDurumu'
+                ).value
+            ) || "-";
+
+        const stok =
+            document.getElementById(
+                'modalUrunStok'
+            ).value || "0";
+
+        const fiyat =
+            document.getElementById(
+                'modalUrunFiyat'
+            ).value.trim() || "-";
+
+        const raf =
+            document.getElementById(
+                'modalUrunRafYeri'
+            ).value.trim() || "-";
+
+        const resim =
+            document.getElementById(
+                'modalUrunResim'
+            ).value.trim() || "-";
+
+        const not =
+            document.getElementById(
+                'modalUrunNotu'
+            ).value.trim() || "-";
+
+
+        // --------------------------------------------------------
+        // MUADİLLER
+        // --------------------------------------------------------
+
+        let muadiller = [];
+
+        document.querySelectorAll(
+            '#modalMuadilKap .muadil-input'
+        ).forEach(function(input) {
+
+            const deger =
+                input.value.trim();
+
+            if (deger !== "") {
+                muadiller.push(deger);
+            }
+        });
+
+        if (muadiller.length === 0) {
+            muadiller = ["-"];
+        }
+
+
+        // --------------------------------------------------------
+        // ARAÇLAR
+        // --------------------------------------------------------
+
+        let araclar = [];
+
+        document.querySelectorAll(
+            '#modalAracKap .arac-input'
+        ).forEach(function(input) {
+
+            const deger =
+                temizMetinAyikla(
+                    input.value
+                );
+
+            if (deger !== "") {
+                araclar.push(deger);
+            }
+        });
+
+        if (araclar.length === 0) {
+            araclar = ["-"];
+        }
+
+
+        // --------------------------------------------------------
+        // KAYDI GÜNCELLE
+        // --------------------------------------------------------
+
+        parcaListesi[i] = {
+
+            ...parcaListesi[i],
+
+            id: id,
+            sku: sku,
+            ad: ad,
+
+            mrk: mrk,
+            durum: durum,
+            stok: stok,
+            fiyat: fiyat,
+
+            raf: raf,
+            resim: resim,
+            not: not,
+
+            muadiller:
+                muadiller,
+
+            araclar:
+                araclar,
+
+            // Eski tarihi koru
+            tarih:
+                parcaListesi[i].tarih ||
+                bugununTarihi()
+        };
+
+
+        // --------------------------------------------------------
+        // LOCAL STORAGE
+        // --------------------------------------------------------
+
+        try {
+
+            localStorage.setItem(
+                'yedekParcaSonDinamik',
+                JSON.stringify(parcaListesi)
+            );
+
+        } catch (hata) {
+
+            console.error(
+                "LocalStorage kayıt hatası:",
+                hata
+            );
+
+            alert(
+                "Veri kaydedilemedi! Tarayıcı hafızası dolu olabilir."
+            );
+
+            return;
+        }
+
+
+        // --------------------------------------------------------
+        // EKRANI YENİLE
+        // --------------------------------------------------------
+
+        orjinalVeriHafizasi = "";
+
+        modalKapat();
+
+        tabloYenile();
+
+        const aramaPaneli =
+            document.getElementById(
+                'aramaSonuclariPaneli'
+            );
+
+        if (
+            aramaPaneli &&
+            aramaPaneli.style.display === 'block'
+        ) {
+            tabloAra();
+        }
+
+        alert(
+            "✅ Parça verisi başarıyla güncellendi!"
+        );
+    }
+
+
+    // ============================================================
+    // MODAL KAPATMA
+    // ============================================================
+
+    function modalKapat() {
+
+        const modal =
+            document.getElementById(
+                'duzenleModal'
+            );
+
+        if (modal) {
+            modal.style.display = 'none';
+        }
+
+        const btn =
+            document.getElementById(
+                'modalKaydetBtn'
+            );
+
+        if (btn) {
+
             btn.disabled = true;
-            btn.style.backgroundColor = "#64748b"; // Değişiklik yoksa gri
+
+            btn.style.backgroundColor =
+                "#64748b";
         }
-    }, 50);
-}
 
-// 📌 YENİLENMİŞ FONKSİYONLAR
-function parcaDuzenleAc(i) {
-    const p = parcaListesi[i];
-
-    if (!p) {
-        alert("Parça bulunamadı!");
-        return;
+        orjinalVeriHafizasi = "";
     }
 
-    // Düzenlenen parçanın indexini sakla
-    document.getElementById('modalDuzenleIndex').value = i;
 
-    // Temel bilgiler
-    document.getElementById('modalUrunID').value =
-        p.id || "";
+    function guvenliModalKapat() {
 
-    document.getElementById('modalStokKodu').value =
-        p.sku || "";
+        const mevcut =
+            yakalaEkrandakiMevcutVeriler();
 
-    document.getElementById('modalParcaAdi').value =
-        p.ad || "";
+        if (
+            orjinalVeriHafizasi !== "" &&
+            mevcut !== orjinalVeriHafizasi
+        ) {
 
-    // Diğer bilgiler
-    document.getElementById('modalMarka').value =
-        p.mrk || "";
+            if (
+                !confirm(
+                    "Kaydedilmemiş değişiklikler var.\n\nÇıkmak istediğinize emin misiniz?"
+                )
+            ) {
+                return;
+            }
+        }
 
-    document.getElementById('modalUrunDurumu').value =
-        p.durum || "";
+        modalKapat();
+    }
 
-    document.getElementById('modalUrunStok').value =
-        p.stok || "0";
 
-    document.getElementById('modalUrunFiyat').value =
-        p.fiyat === "-" ? "" : (p.fiyat || "");
+    // ============================================================
+    // YÜKLENİYOR EKRANI
+    // ============================================================
 
-    document.getElementById('modalUrunRafYeri').value =
-        p.raf === "-" ? "" : (p.raf || "");
+    function yukleniyorGoster(metin) {
 
-    document.getElementById('modalUrunResim').value =
-        p.resim === "-" ? "" : (p.resim || "");
-
-    document.getElementById('modalUrunNotu').value =
-        p.not === "-" ? "" : (p.not || "");
-
-    // ==========================
-    // MUADİL PARÇALAR
-    // ==========================
-
-    const mKap = document.getElementById('modalMuadilKap');
-
-    if (mKap) {
-
-        mKap.innerHTML = "";
-
-        const liste =
-            Array.isArray(p.muadiller) &&
-            p.muadiller.length > 0
-                ? p.muadiller
-                : ["-"];
-
-        liste.forEach(function(m, index) {
-
-            const div = document.createElement('div');
-
-            div.className = 'dynamic-item';
-
-            const input = document.createElement('input');
-
-            input.type = 'text';
-            input.className = 'muadil-input';
-            input.placeholder = 'Değişen ' + (index + 1);
-            input.autocomplete = 'off';
-
-            input.value =
-                m === "-" ? "" : (m || "");
-
-            input.addEventListener(
-                'input',
-                akilliButonGozculugu
+        const ekran =
+            document.getElementById(
+                'loadingEkran'
             );
 
-            div.appendChild(input);
-            mKap.appendChild(div);
-        });
-    }
-
-    // ==========================
-    // UYUMLU ARAÇLAR
-    // ==========================
-
-    const aKap = document.getElementById('modalAracKap');
-
-    if (aKap) {
-
-        aKap.innerHTML = "";
-
-        const liste =
-            Array.isArray(p.araclar) &&
-            p.araclar.length > 0
-                ? p.araclar
-                : ["-"];
-
-        liste.forEach(function(a, index) {
-
-            const div = document.createElement('div');
-
-            div.className = 'dynamic-item';
-
-            const input = document.createElement('input');
-
-            input.type = 'text';
-            input.className = 'arac-input';
-            input.setAttribute('list', 'havuzDatalist');
-            input.placeholder = 'Araç ' + (index + 1);
-            input.autocomplete = 'off';
-
-            input.value =
-                a === "-" ? "" : (a || "");
-
-            input.addEventListener(
-                'input',
-                akilliButonGozculugu
+        const txt =
+            document.getElementById(
+                'loadingMetin'
             );
 
-            div.appendChild(input);
-            aKap.appendChild(div);
-        });
-    }
-
-    // Orijinal veriyi hafızaya al
-    orjinalVeriHafizasi =
-        yakalaEkrandakiMevcutVeriler();
-
-    // Kaydet butonunu başlangıçta pasifleştir
-    const btn =
-        document.getElementById('modalKaydetBtn');
-
-    if (btn) {
-        btn.disabled = true;
-        btn.style.backgroundColor = "#64748b";
-    }
-
-    // Modalı aç
-    const modal =
-        document.getElementById('duzenleModal');
-
-    if (modal) {
-        modal.style.display = 'flex';
-    }
-}
-
-// --- BOŞ BIRAKILAN GÜNCELLEME MOTORUNUN ÇALIŞAN HALİ ---
-function modalVeriGuncelle() {
-    const indexEl = document.getElementById('modalDuzenleIndex');
-    const i = parseInt(indexEl.value, 10);
-
-    if (isNaN(i) || !parcaListesi[i]) {
-        alert("Düzenlenecek parça bulunamadı!");
-        return;
-    }
-
-    const id = document.getElementById('modalUrunID').value.trim();
-    const sku = document.getElementById('modalStokKodu').value.trim();
-    const ad = document.getElementById('modalParcaAdi').value.trim();
-
-    // Zorunlu alanlar
-    if (id === "" || sku === "" || ad === "") {
-        alert("Ürün No, Stok Kodu ve Ürün Adı boş bırakılamaz!");
-        return;
-    }
-
-    // SKU başka üründe kullanılıyor mu?
-    if (!stokKoduCanliKontrolModal(sku)) {
-        return;
-    }
-
-    // Diğer alanları oku
-    const mrk =
-        temizMetinAyikla(
-            document.getElementById('modalMarka').value
-        ) || "-";
-
-    const drm =
-        temizMetinAyikla(
-            document.getElementById('modalUrunDurumu').value
-        ) || "-";
-
-    const stk =
-        document.getElementById('modalUrunStok').value || "0";
-
-    const fyt =
-        document.getElementById('modalUrunFiyat').value.trim() || "-";
-
-    const raf =
-        document.getElementById('modalUrunRafYeri').value.trim() || "-";
-
-    const rsm =
-        document.getElementById('modalUrunResim').value.trim() || "-";
-
-    const not =
-        document.getElementById('modalUrunNotu').value.trim() || "-";
-
-    // Muadil parçaları oku
-    const muadiller = [];
-
-    document.querySelectorAll(
-        '#modalMuadilKap .muadil-input'
-    ).forEach(function(input) {
-
-        const deger = input.value.trim();
-
-        if (deger !== "") {
-            muadiller.push(deger);
+        if (ekran) {
+            ekran.style.display = 'flex';
         }
-    });
 
-    // Hiç muadil yoksa "-"
-    if (muadiller.length === 0) {
-        muadiller.push("-");
-    }
-
-    // Araçları oku
-    const araclar = [];
-
-    document.querySelectorAll(
-        '#modalAracKap .arac-input'
-    ).forEach(function(input) {
-
-        const deger = temizMetinAyikla(input.value);
-
-        if (deger !== "") {
-            araclar.push(deger);
+        if (txt) {
+            txt.innerText =
+                metin ||
+                "İşlem yapılıyor...";
         }
-    });
-
-    // Hiç araç yoksa "-"
-    if (araclar.length === 0) {
-        araclar.push("-");
     }
 
-    // Mevcut kaydı koru, sadece düzenlenen alanları değiştir
-    parcaListesi[i] = {
-        ...parcaListesi[i],
 
-        id: id,
-        sku: sku,
-        ad: ad,
-        mrk: mrk,
-        durum: drm,
-        stok: stk,
-        fiyat: fyt,
-        raf: raf,
-        resim: rsm,
-        not: not,
-        muadiller: muadiller,
-        araclar: araclar
-    };
+    function yukleniyorGizle() {
 
-    // Hafızaya kaydet
-    localStorage.setItem(
-        'yedekParcaSonDinamik',
-        JSON.stringify(parcaListesi)
-    );
+        const ekran =
+            document.getElementById(
+                'loadingEkran'
+            );
 
-    // Modalı kapat
-    modalKapat();
-
-    // Tabloları yenile
-    tabloYenile();
-
-    const aramaPaneli =
-        document.getElementById('aramaSonuclariPaneli');
-
-    if (aramaPaneli &&
-        aramaPaneli.style.display === 'block') {
-
-        tabloAra();
+        if (ekran) {
+            ekran.style.display = 'none';
+        }
     }
 
-    // Değişiklik hafızasını temizle
-    orjinalVeriHafizasi = "";
 
-    alert("✅ Parça verisi başarıyla güncellendi!");
-}
+    // ============================================================
+    // ARAÇ HAVUZU DÜZENLE
+    // ============================================================
 
-// Eksik olan Yükleme Ekranı Fonksiyonları:
-function yukleniyorGoster(metin) {
-    document.getElementById('loadingEkran').style.display = 'flex';
-    document.getElementById('loadingMetin').innerText = metin;
-}
-function yukleniyorGizle() {
-    document.getElementById('loadingEkran').style.display = 'none';
-}
+    function modalAracGuncelle() {
 
-function modalKapat() {
-    document.getElementById('duzenleModal').style.display = 'none';
-}
+        const indexEl =
+            document.getElementById(
+                'modalAracDuzenleIndex'
+            );
 
-function guvenliModalKapat() {
-    if (confirm("Değişiklikler kaybolabilir! Çıkmak istiyor musunuz?")) modalKapat();
-}
+        if (!indexEl ||
+            indexEl.value === "") {
+            return;
+        }
 
-function yakalaEkrandakiMevcutVeriler() {
+        const i =
+            parseInt(indexEl.value, 10);
 
-    const muadiller = [];
+        const m =
+            document.getElementById(
+                'modalAracMarka'
+            ).value.trim();
 
-    document.querySelectorAll(
-        '#modalMuadilKap .muadil-input'
-    ).forEach(function(input) {
+        const mo =
+            document.getElementById(
+                'modalAracModel'
+            ).value.trim();
 
-        muadiller.push(
-            input.value.trim()
+        const y =
+            document.getElementById(
+                'modalAracYil'
+            ).value.trim();
+
+
+        if (m === "" || mo === "") {
+
+            alert(
+                "Marka ve Model boş bırakılamaz!"
+            );
+
+            return;
+        }
+
+
+        aracHavuzu[i] = {
+
+            marka: m,
+            model: mo,
+            yil: y || "-"
+
+        };
+
+
+        localStorage.setItem(
+            'yedekParcaAracHavuzuNesne',
+            JSON.stringify(aracHavuzu)
         );
-    });
 
-    const araclar = [];
+        aracModalKapat();
 
-    document.querySelectorAll(
-        '#modalAracKap .arac-input'
-    ).forEach(function(input) {
+        aracTablosuYenile();
 
-        araclar.push(
-            temizMetinAyikla(input.value)
+        datalistleriTazele();
+    }
+
+
+    function aracModalKapat() {
+
+        const modal =
+            document.getElementById(
+                'aracDuzenleModal'
+            );
+
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+
+    // ============================================================
+    // MARKA DÜZENLE
+    // ============================================================
+
+    function markaSatirDuzenle(i) {
+
+        const m =
+            markaHavuzu[i];
+
+        if (m === undefined) return;
+
+        document.getElementById(
+            'modalMarkaDuzenleIndex'
+        ).value = i;
+
+        document.getElementById(
+            'modalMarkaAd'
+        ).value = m || "";
+
+        const modal =
+            document.getElementById(
+                'markaDuzenleModal'
+            );
+
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+
+    function modalMarkaGuncelle() {
+
+        const indexEl =
+            document.getElementById(
+                'modalMarkaDuzenleIndex'
+            );
+
+        if (!indexEl ||
+            indexEl.value === "") {
+            return;
+        }
+
+        const i =
+            parseInt(indexEl.value, 10);
+
+        const m =
+            document.getElementById(
+                'modalMarkaAd'
+            ).value.trim();
+
+
+        if (m === "") {
+
+            alert(
+                "Marka adı boş bırakılamaz!"
+            );
+
+            return;
+        }
+
+
+        markaHavuzu[i] = m;
+
+
+        localStorage.setItem(
+            'yedekParcaMarkaHavuzu',
+            JSON.stringify(markaHavuzu)
         );
-    });
 
-    const veri = {
-        id: document.getElementById('modalUrunID').value.trim(),
+        markaModalKapat();
 
-        sku: document.getElementById('modalStokKodu').value.trim(),
+        markaTablosuYenile();
 
-        ad: document.getElementById('modalParcaAdi').value.trim(),
+        datalistleriTazele();
+    }
 
-        mrk: document.getElementById('modalMarka').value.trim(),
 
-        durum: document.getElementById('modalUrunDurumu').value.trim(),
+    function markaModalKapat() {
 
-        stok: document.getElementById('modalUrunStok').value,
+        const modal =
+            document.getElementById(
+                'markaDuzenleModal'
+            );
 
-        fiyat: document.getElementById('modalUrunFiyat').value.trim(),
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
 
-        raf: document.getElementById('modalUrunRafYeri').value.trim(),
 
-        resim: document.getElementById('modalUrunResim').value.trim(),
+    // ============================================================
+    // DURUM DÜZENLE
+    // ============================================================
 
-        not: document.getElementById('modalUrunNotu').value.trim(),
+    function durumSatirDuzenle(i) {
 
-        muadiller: muadiller,
+        const d =
+            durumHavuzu[i];
 
-        araclar: araclar
-    };
+        if (d === undefined) return;
 
-    return JSON.stringify(veri);
-}
-    function modalAracGuncelle() { const i = document.getElementById('modalAracDuzenleIndex').value; if (i === "") return; const m = document.getElementById('modalAracMarka').value.trim(); const mo = document.getElementById('modalAracModel').value.trim(); const y = document.getElementById('modalAracYil').value.trim(); if (m === "" || mo === "") { alert("Marka ve Model boş bırakılamaz!"); return; } aracHavuzu[i] = { marka: m, model: mo, yil: y }; localStorage.setItem('yedekParcaAracHavuzuNesne', JSON.stringify(aracHavuzu)); aracModalKapat(); aracTablosuYenile(); datalistleriTazele(); }
-    function aracModalKapat() { const modal = document.getElementById('aracDuzenleModal'); if (modal) modal.style.display = 'none'; }
-    function markaSatirDuzenle(i) { const m = markaHavuzu[i]; if (!m) return; document.getElementById('modalMarkaDuzenleIndex').value = i; document.getElementById('modalMarkaAd').value = m || "-"; const modal = document.getElementById('markaDuzenleModal'); if (modal) modal.style.display = 'flex'; }
-    function modalMarkaGuncelle() { const i = document.getElementById('modalMarkaDuzenleIndex').value; if (i === "") return; const m = document.getElementById('modalMarkaAd').value.trim(); if (m === "") { alert("Marka adı boş bırakılamaz!"); return; } markaHavuzu[i] = m; localStorage.setItem('yedekParcaMarkaHavuzu', JSON.stringify(markaHavuzu)); markaModalKapat(); markaTablosuYenile(); datalistleriTazele(); }
-    function markaModalKapat() { const modal = document.getElementById('markaDuzenleModal'); if (modal) modal.style.display = 'none'; }
-    function durumSatirDuzenle(i) { const d = durumHavuzu[i]; if (!d) return; document.getElementById('modalDurumDuzenleIndex').value = i; document.getElementById('modalDurumAd').value = d || "-"; const modal = document.getElementById('durumDuzenleModal'); if (modal) modal.style.display = 'flex'; }
-    function modalDurumGuncelle() { const i = document.getElementById('modalDurumDuzenleIndex').value; if (i === "") return; const d = document.getElementById('modalDurumAd').value.trim(); if (d === "") { alert("Durum adı boş bırakılamaz!"); return; } durumHavuzu[i] = d; localStorage.setItem('yedekParcaDurumHavuzu', JSON.stringify(durumHavuzu)); durumModalKapat(); durumTablosuYenile(); datalistleriTazele(); }
-    function durumModalKapat() { const modal = document.getElementById('durumDuzenleModal'); if (modal) modal.style.display = 'none'; }
+        document.getElementById(
+            'modalDurumDuzenleIndex'
+        ).value = i;
 
-	// 📥 %100 INTERNETSIZ BILDIRIMLI JSON TRANSFER MOTORLARI
+        document.getElementById(
+            'modalDurumAd'
+        ).value = d || "";
+
+        const modal =
+            document.getElementById(
+                'durumDuzenleModal'
+            );
+
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+
+    function modalDurumGuncelle() {
+
+        const indexEl =
+            document.getElementById(
+                'modalDurumDuzenleIndex'
+            );
+
+        if (!indexEl ||
+            indexEl.value === "") {
+            return;
+        }
+
+        const i =
+            parseInt(indexEl.value, 10);
+
+        const d =
+            document.getElementById(
+                'modalDurumAd'
+            ).value.trim();
+
+
+        if (d === "") {
+
+            alert(
+                "Durum adı boş bırakılamaz!"
+            );
+
+            return;
+        }
+
+
+        durumHavuzu[i] = d;
+
+
+        localStorage.setItem(
+            'yedekParcaDurumHavuzu',
+            JSON.stringify(durumHavuzu)
+        );
+
+        durumModalKapat();
+
+        durumTablosuYenile();
+
+        datalistleriTazele();
+    }
+
+
+    function durumModalKapat() {
+
+        const modal =
+            document.getElementById(
+                'durumDuzenleModal'
+            );
+
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+
+    // ============================================================
+    // PARÇA JSON YÜKLE
+    // ============================================================
+
     function topluParcaYukle() {
-        const fi = document.getElementById('csvDosyaSec'); if (!fi || fi.files.length === 0) return alert("JSON dosyası seçin!");
-        yukleniyorGoster("Parçalar anında çözülüyor...");
-        const reader = new FileReader(); reader.onload = function(e) {
+
+        const fi =
+            document.getElementById(
+                'csvDosyaSec'
+            );
+
+        if (
+            !fi ||
+            !fi.files ||
+            fi.files.length === 0
+        ) {
+
+            alert(
+                "JSON dosyası seçin!"
+            );
+
+            return;
+        }
+
+
+        const dosya =
+            fi.files[0];
+
+        yukleniyorGoster(
+            "Parçalar yükleniyor..."
+        );
+
+
+        const reader =
+            new FileReader();
+
+
+        reader.onload = function(e) {
+
             try {
-                const rows = JSON.parse(e.target.result); let eklenen = 0;
-                rows.forEach(satir => {
-                    const id = String(satir.id || satir["Ürün No"] || "").trim();
-                    const sku = String(satir.sku || satir["Stok Kodu"] || "").trim();
-                    const ad = String(satir.ad || satir["Ürün Adı"] || "").trim();
-                    if (id !== "" && sku !== "" && ad !== "") {
-                        parcaListesi.push({ id: id, sku: sku, ad: ad, mrk: String(satir.mrk||satir.Marka||"-"), durum: String(satir.durum||satir.Durum||"-"), stok: String(satir.stok||"1"), fiyat: String(satir.fiyat||"-"), raf: String(satir.raf||"-"), resim: String(satir.resim||"-"), not: String(satir.not||"-"), muadiller: Array.isArray(satir.muadiller)?satir.muadiller:["-"], araclar: Array.isArray(satir.araclar)?satir.araclar:["-"], tarih: bugununTarihi() });
-                        eklenen++;
+
+                const rows =
+                    JSON.parse(
+                        e.target.result
+                    );
+
+
+                if (!Array.isArray(rows)) {
+
+                    throw new Error(
+                        "JSON bir dizi değil."
+                    );
+                }
+
+
+                let eklenen = 0;
+
+
+                rows.forEach(function(satir) {
+
+                    if (
+                        !satir ||
+                        typeof satir !== 'object'
+                    ) {
+                        return;
                     }
+
+
+                    const id =
+                        String(
+                            satir.id ??
+                            satir["Ürün No"] ??
+                            ""
+                        ).trim();
+
+
+                    const sku =
+                        String(
+                            satir.sku ??
+                            satir["Stok Kodu"] ??
+                            ""
+                        ).trim();
+
+
+                    const ad =
+                        String(
+                            satir.ad ??
+                            satir["Ürün Adı"] ??
+                            ""
+                        ).trim();
+
+
+                    if (
+                        id === "" ||
+                        sku === "" ||
+                        ad === ""
+                    ) {
+                        return;
+                    }
+
+
+                    const muadiller =
+                        Array.isArray(
+                            satir.muadiller
+                        )
+                            ? diziTemizle(
+                                satir.muadiller
+                              )
+                            : [];
+
+
+                    const araclar =
+                        Array.isArray(
+                            satir.araclar
+                        )
+                            ? diziTemizle(
+                                satir.araclar
+                              )
+                            : [];
+
+
+                    parcaListesi.push({
+
+                        id: id,
+
+                        sku: sku,
+
+                        ad: ad,
+
+                        mrk:
+                            String(
+                                satir.mrk ??
+                                satir.Marka ??
+                                "-"
+                            ).trim() || "-",
+
+                        durum:
+                            String(
+                                satir.durum ??
+                                satir.Durum ??
+                                "-"
+                            ).trim() || "-",
+
+                        stok:
+                            String(
+                                satir.stok ??
+                                "1"
+                            ),
+
+                        fiyat:
+                            String(
+                                satir.fiyat ??
+                                "-"
+                            ).trim() || "-",
+
+                        raf:
+                            String(
+                                satir.raf ??
+                                "-"
+                            ).trim() || "-",
+
+                        resim:
+                            String(
+                                satir.resim ??
+                                "-"
+                            ).trim() || "-",
+
+                        not:
+                            String(
+                                satir.not ??
+                                "-"
+                            ).trim() || "-",
+
+                        muadiller:
+                            muadiller.length
+                                ? muadiller
+                                : ["-"],
+
+                        araclar:
+                            araclar.length
+                                ? araclar
+                                : ["-"],
+
+                        tarih:
+                            satir.tarih ||
+                            bugununTarihi()
+                    });
+
+
+                    eklenen++;
                 });
-                localStorage.setItem('yedekParcaSonDinamik', JSON.stringify(parcaListesi)); tabloYenile(); yukleniyorGizle(); alert("💾 BAŞARILI!\n\n"+eklenen+" adet parça donmadan akıllı hafızaya yüklendi."); fi.value = "";
-            } catch (h) { yukleniyorGizle(); alert("Geçersiz JSON formatı!"); }
-        }; reader.readAsText(fi.files);
+
+
+                localStorage.setItem(
+                    'yedekParcaSonDinamik',
+                    JSON.stringify(
+                        parcaListesi
+                    )
+                );
+
+
+                tabloYenile();
+
+                yukleniyorGizle();
+
+                fi.value = "";
+
+
+                alert(
+                    "💾 BAŞARILI!\n\n" +
+                    eklenen +
+                    " adet parça hafızaya yüklendi."
+                );
+
+
+            } catch (hata) {
+
+                console.error(
+                    "JSON yükleme hatası:",
+                    hata
+                );
+
+                yukleniyorGizle();
+
+                alert(
+                    "❌ Geçersiz JSON formatı!"
+                );
+            }
+        };
+
+
+        // KRİTİK DÜZELTME:
+        // FileList yerine seçilen dosyanın kendisi okunuyor.
+        reader.readAsText(dosya);
     }
+
+
+    // ============================================================
+    // PARÇA YEDEKLE
+    // ============================================================
 
     function dosyaIndirYenilenmis() {
-        if (parcaListesi.length === 0) return alert("Hafıza boş!");
-        const dosyaAdi = "yedek_parca_depo_yedek.json";
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(parcaListesi, null, 2));
-        const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", dosyaAdi); document.body.appendChild(a); a.click(); a.remove();
-        alert("💾 YEDEKLEME BAŞARILI!\n\n"+parcaListesi.length+" adet ürün verisi json olarak indirildi.");
+
+        if (
+            parcaListesi.length === 0
+        ) {
+
+            alert(
+                "Hafıza boş!"
+            );
+
+            return;
+        }
+
+
+        const dataStr =
+            "data:application/json;charset=utf-8," +
+            encodeURIComponent(
+                JSON.stringify(
+                    parcaListesi,
+                    null,
+                    2
+                )
+            );
+
+
+        const a =
+            document.createElement('a');
+
+        a.href = dataStr;
+
+        a.download =
+            "yedek_parca_depo_yedek.json";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+
+        alert(
+            "💾 YEDEKLEME BAŞARILI!\n\n" +
+            parcaListesi.length +
+            " adet ürün JSON olarak indirildi."
+        );
     }
+
 
     function ornekParcaSablonuIndir() {
-        const sablon = [{"id": "WOLKSTEK-1", "sku": "1K0121251BR", "ad": "Radyatör Su Deposu", "mrk": "Vw", "durum": "Sıfır", "stok": "5", "fiyat": "1250", "raf": "A-12", "resim": "passat.jpg", "muadiller": ["1K0121251C"], "araclar": ["Golf 5"], "not": "Garantili Yan Sanayi"}];
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sablon, null, 2));
-        const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "ornek_urun_sablonu.json"); document.body.appendChild(a); a.click(); a.remove();
+
+        const sablon = [
+
+            {
+                id: "WOLKSTEK-1",
+
+                sku: "1K0121251BR",
+
+                ad: "Radyatör Su Deposu",
+
+                mrk: "Vw",
+
+                durum: "Sıfır",
+
+                stok: "5",
+
+                fiyat: "1250",
+
+                raf: "A-12",
+
+                resim: "passat.jpg",
+
+                muadiller: [
+                    "1K0121251C"
+                ],
+
+                araclar: [
+                    "Golf 5"
+                ],
+
+                not: "Garantili Yan Sanayi"
+            }
+
+        ];
+
+
+        const dataStr =
+            "data:application/json;charset=utf-8," +
+            encodeURIComponent(
+                JSON.stringify(
+                    sablon,
+                    null,
+                    2
+                )
+            );
+
+
+        const a =
+            document.createElement('a');
+
+        a.href = dataStr;
+
+        a.download =
+            "ornek_urun_sablonu.json";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
     }
 
-    function ornekAracSablonuIndir() { const s = [{"marka": "Vw", "model": "Golf 5", "yil": "2004-2008"}]; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(s, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "ornek_arac_sablonu.json"); document.body.appendChild(a); a.click(); a.remove(); }
-    function topluAracYukle() { const fi = document.getElementById('aracExcelSec'); if (!fi || fi.files.length === 0) return alert("Dosya seçin!"); const reader = new FileReader(); reader.onload = function(e) { try { const rows = JSON.parse(e.target.result); let ek = 0; rows.forEach(r => { if(r.marka && r.model) { aracHavuzu.push({marka: r.marka, model: r.model, yil: r.yil||"-"}); ek++; } }); localStorage.setItem('yedekParcaAracHavuzuNesne', JSON.stringify(aracHavuzu)); datalistleriTazele(); aracTablosuYenile(); alert("🚗 " + ek + " araç havuz verisi yüklendi."); fi.value=""; } catch(h) { alert("Hata!"); } }; reader.readAsText(fi.files); }
-    function aracHavuzunuIndir() { if(aracHavuzu.length===0) return alert("Boş!"); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(aracHavuzu, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "arac_havuz_listesi.json"); document.body.appendChild(a); a.click(); a.remove(); alert("💾 Araç yedeklendi! Toplam: " + aracHavuzu.length); }
-    function ornekMarkaSablonuIndir() { const s = ["Hella"]; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(s, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "ornek_marka_sablonu.json"); document.body.appendChild(a); a.click(); a.remove(); }
-    function topluMarkaYukle() { const fi = document.getElementById('markaExcelSec'); if (!fi || fi.files.length === 0) return alert("Dosya seçin!"); const reader = new FileReader(); reader.onload = function(e) { try { const rows = JSON.parse(e.target.result); let ek = 0; rows.forEach(r => { const m = typeof r === "string" ? r : (r["Marka Adı"]||r.marka); if(m) { markaHavuzu.push(String(m).trim()); ek++; } }); localStorage.setItem('yedekParcaMarkaHavuzu', JSON.stringify(markaHavuzu)); datalistleriTazele(); markaTablosuYenile(); alert("🏷️ " + ek + " marka verisi yüklendi."); fi.value=""; } catch(h) { alert("Hata!"); } }; reader.readAsText(fi.files); }
-    function markaHavuzunuIndir() { if(markaHavuzu.length===0) return alert("Boş!"); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(markaHavuzu, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "marka_havuz_listesi.json"); document.body.appendChild(a); a.click(); a.remove(); alert("💾 Marka yedeklendi! Toplam: " + markaHavuzu.length); }
 
-    // HAVUZ KAPANIS MOTORLARI
-    function ornekDurumSablonuIndir() { const s = ["Sıfır"]; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(s, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "ornek_durum_sablonu.json"); document.body.appendChild(a); a.click(); a.remove(); }
-    function topluDurumYukle() { const fi = document.getElementById('durumExcelSec'); if (!fi || fi.files.length === 0) return alert("Dosya seçin!"); const reader = new FileReader(); reader.onload = function(e) { try { const rows = JSON.parse(e.target.result); let ek = 0; rows.forEach(r => { const d = typeof r === "string" ? r : (r["Durum Adı"]||r.durum); if(d) { durumHavuzu.push(String(d).trim()); ek++; } }); localStorage.setItem('yedekParcaDurumHavuzu', JSON.stringify(durumHavuzu)); datalistleriTazele(); durumTablosuYenile(); alert("✨ " + ek + " durum verisi yüklendi."); fi.value=""; } catch(h) { alert("Hata!"); } }; reader.readAsText(fi.files); }
-    function durumHavuzunuIndir() { if(durumHavuzu.length===0) return alert("Boş!"); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(durumHavuzu, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "durum_havuz_listesi.json"); document.body.appendChild(a); a.click(); a.remove(); alert("💾 Durum yedeklendi! Toplam: " + durumHavuzu.length); }
+    // ============================================================
+    // ARAÇ JSON
+    // ============================================================
 
-    function yukleniyorGoster(m) { const o = document.getElementById('loadingEkran'); const t = document.getElementById('loadingMetin'); if (t) t.innerText = m; if (o) o.style.display = 'flex'; }
-    function yukleniyorGizle() { const o = document.getElementById('loadingEkran'); if (o) o.style.display = 'none'; }
+    function ornekAracSablonuIndir() {
+
+        const sablon = [
+
+            {
+                marka: "Vw",
+                model: "Golf 5",
+                yil: "2004-2008"
+            }
+
+        ];
+
+
+        const dataStr =
+            "data:application/json;charset=utf-8," +
+            encodeURIComponent(
+                JSON.stringify(
+                    sablon,
+                    null,
+                    2
+                )
+            );
+
+
+        const a =
+            document.createElement('a');
+
+        a.href = dataStr;
+
+        a.download =
+            "ornek_arac_sablonu.json";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+    }
+
+
+    function topluAracYukle() {
+
+        const fi =
+            document.getElementById(
+                'aracExcelSec'
+            );
+
+        if (
+            !fi ||
+            !fi.files ||
+            fi.files.length === 0
+        ) {
+
+            alert(
+                "Dosya seçin!"
+            );
+
+            return;
+        }
+
+
+        const reader =
+            new FileReader();
+
+
+        reader.onload = function(e) {
+
+            try {
+
+                const rows =
+                    JSON.parse(
+                        e.target.result
+                    );
+
+
+                if (!Array.isArray(rows)) {
+                    throw new Error();
+                }
+
+
+                let ek = 0;
+
+
+                rows.forEach(function(r) {
+
+                    if (
+                        r &&
+                        r.marka &&
+                        r.model
+                    ) {
+
+                        aracHavuzu.push({
+
+                            marka:
+                                String(
+                                    r.marka
+                                ).trim(),
+
+                            model:
+                                String(
+                                    r.model
+                                ).trim(),
+
+                            yil:
+                                String(
+                                    r.yil ||
+                                    "-"
+                                ).trim()
+                        });
+
+                        ek++;
+                    }
+                });
+
+
+                localStorage.setItem(
+                    'yedekParcaAracHavuzuNesne',
+                    JSON.stringify(
+                        aracHavuzu
+                    )
+                );
+
+
+                datalistleriTazele();
+
+                aracTablosuYenile();
+
+                fi.value = "";
+
+
+                alert(
+                    "🚗 " +
+                    ek +
+                    " araç havuz verisi yüklendi."
+                );
+
+
+            } catch (hata) {
+
+                alert(
+                    "❌ Araç JSON dosyası geçersiz!"
+                );
+            }
+        };
+
+
+        reader.readAsText(
+            fi.files[0]
+        );
+    }
+
+
+    function aracHavuzunuIndir() {
+
+        if (
+            aracHavuzu.length === 0
+        ) {
+
+            alert(
+                "Araç havuzu boş!"
+            );
+
+            return;
+        }
+
+
+        const dataStr =
+            "data:application/json;charset=utf-8," +
+            encodeURIComponent(
+                JSON.stringify(
+                    aracHavuzu,
+                    null,
+                    2
+                )
+            );
+
+
+        const a =
+            document.createElement('a');
+
+        a.href = dataStr;
+
+        a.download =
+            "arac_havuz_listesi.json";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+
+        alert(
+            "💾 Araç havuzu yedeklendi!\n\nToplam: " +
+            aracHavuzu.length
+        );
+    }
+
+
+    // ============================================================
+    // MARKA JSON
+    // ============================================================
+
+    function ornekMarkaSablonuIndir() {
+
+        const sablon = [
+            "Hella"
+        ];
+
+
+        const dataStr =
+            "data:application/json;charset=utf-8," +
+            encodeURIComponent(
+                JSON.stringify(
+                    sablon,
+                    null,
+                    2
+                )
+            );
+
+
+        const a =
+            document.createElement('a');
+
+        a.href = dataStr;
+
+        a.download =
+            "ornek_marka_sablonu.json";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+    }
+
+
+    function topluMarkaYukle() {
+
+        const fi =
+            document.getElementById(
+                'markaExcelSec'
+            );
+
+        if (
+            !fi ||
+            !fi.files ||
+            fi.files.length === 0
+        ) {
+
+            alert(
+                "Dosya seçin!"
+            );
+
+            return;
+        }
+
+
+        const reader =
+            new FileReader();
+
+
+        reader.onload = function(e) {
+
+            try {
+
+                const rows =
+                    JSON.parse(
+                        e.target.result
+                    );
+
+
+                if (!Array.isArray(rows)) {
+                    throw new Error();
+                }
+
+
+                let ek = 0;
+
+
+                rows.forEach(function(r) {
+
+                    const m =
+                        typeof r === "string"
+                            ? r
+                            : (
+                                r &&
+                                (
+                                    r["Marka Adı"] ||
+                                    r.marka
+                                )
+                            );
+
+
+                    if (m) {
+
+                        markaHavuzu.push(
+                            String(m).trim()
+                        );
+
+                        ek++;
+                    }
+                });
+
+
+                localStorage.setItem(
+                    'yedekParcaMarkaHavuzu',
+                    JSON.stringify(
+                        markaHavuzu
+                    )
+                );
+
+
+                datalistleriTazele();
+
+                markaTablosuYenile();
+
+                fi.value = "";
+
+
+                alert(
+                    "🏷️ " +
+                    ek +
+                    " marka verisi yüklendi."
+                );
+
+
+            } catch (hata) {
+
+                alert(
+                    "❌ Marka JSON dosyası geçersiz!"
+                );
+            }
+        };
+
+
+        reader.readAsText(
+            fi.files[0]
+        );
+    }
+
+
+    function markaHavuzunuIndir() {
+
+        if (
+            markaHavuzu.length === 0
+        ) {
+
+            alert(
+                "Marka havuzu boş!"
+            );
+
+            return;
+        }
+
+
+        const dataStr =
+            "data:application/json;charset=utf-8," +
+            encodeURIComponent(
+                JSON.stringify(
+                    markaHavuzu,
+                    null,
+                    2
+                )
+            );
+
+
+        const a =
+            document.createElement('a');
+
+        a.href = dataStr;
+
+        a.download =
+            "marka_havuz_listesi.json";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+
+        alert(
+            "💾 Marka havuzu yedeklendi!\n\nToplam: " +
+            markaHavuzu.length
+        );
+    }
+
+
+    // ============================================================
+    // DURUM JSON
+    // ============================================================
+
+    function ornekDurumSablonuIndir() {
+
+        const sablon = [
+            "Sıfır"
+        ];
+
+
+        const dataStr =
+            "data:application/json;charset=utf-8," +
+            encodeURIComponent(
+                JSON.stringify(
+                    sablon,
+                    null,
+                    2
+                )
+            );
+
+
+        const a =
+            document.createElement('a');
+
+        a.href = dataStr;
+
+        a.download =
+            "ornek_durum_sablonu.json";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+    }
+
+
+    function topluDurumYukle() {
+
+        const fi =
+            document.getElementById(
+                'durumExcelSec'
+            );
+
+        if (
+            !fi ||
+            !fi.files ||
+            fi.files.length === 0
+        ) {
+
+            alert(
+                "Dosya seçin!"
+            );
+
+            return;
+        }
+
+
+        const reader =
+            new FileReader();
+
+
+        reader.onload = function(e) {
+
+            try {
+
+                const rows =
+                    JSON.parse(
+                        e.target.result
+                    );
+
+
+                if (!Array.isArray(rows)) {
+                    throw new Error();
+                }
+
+
+                let ek = 0;
+
+
+                rows.forEach(function(r) {
+
+                    const d =
+                        typeof r === "string"
+                            ? r
+                            : (
+                                r &&
+                                (
+                                    r["Durum Adı"] ||
+                                    r.durum
+                                )
+                            );
+
+
+                    if (d) {
+
+                        durumHavuzu.push(
+                            String(d).trim()
+                        );
+
+                        ek++;
+                    }
+                });
+
+
+                localStorage.setItem(
+                    'yedekParcaDurumHavuzu',
+                    JSON.stringify(
+                        durumHavuzu
+                    )
+                );
+
+
+                datalistleriTazele();
+
+                durumTablosuYenile();
+
+                fi.value = "";
+
+
+                alert(
+                    "✨ " +
+                    ek +
+                    " durum verisi yüklendi."
+                );
+
+
+            } catch (hata) {
+
+                alert(
+                    "❌ Durum JSON dosyası geçersiz!"
+                );
+            }
+        };
+
+
+        reader.readAsText(
+            fi.files[0]
+        );
+    }
+
+
+    function durumHavuzunuIndir() {
+
+        if (
+            durumHavuzu.length === 0
+        ) {
+
+            alert(
+                "Durum havuzu boş!"
+            );
+
+            return;
+        }
+
+
+        const dataStr =
+            "data:application/json;charset=utf-8," +
+            encodeURIComponent(
+                JSON.stringify(
+                    durumHavuzu,
+                    null,
+                    2
+                )
+            );
+
+
+        const a =
+            document.createElement('a');
+
+        a.href = dataStr;
+
+        a.download =
+            "durum_havuz_listesi.json";
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        a.remove();
+
+
+        alert(
+            "💾 Durum havuzu yedeklendi!\n\nToplam: " +
+            durumHavuzu.length
+        );
+    }
+
+
+    // ============================================================
+    // HAFIZAYI SIFIRLA
+    // ============================================================
 
     function hafizaSifirla() {
-        if (confirm("DİKKAT: Tüm verileriniz kalıcı olarak silinecektir!\n\nEmin misiniz?")) {
-            localStorage.clear(); parcaListesi = []; aracHavuzu = []; markaHavuzu = []; durumHavuzu = [];
-            datalistleriTazele(); aracTablosuYenile(); markaTablosuYenile(); durumTablosuYenile(); formAlanlariniSifirla(); tabloYenile();
-            if(document.getElementById('aramaSonuclariPaneli')) document.getElementById('aramaSonuclariPaneli').style.display = 'none';
-            alert("Sistem sıfırlandı!");
+
+        if (
+            !confirm(
+                "DİKKAT: Tüm verileriniz kalıcı olarak silinecektir!\n\nEmin misiniz?"
+            )
+        ) {
+            return;
         }
+
+
+        localStorage.clear();
+
+
+        parcaListesi = [];
+
+        aracHavuzu = [];
+
+        markaHavuzu = [];
+
+        durumHavuzu = [];
+
+
+        datalistleriTazele();
+
+        aracTablosuYenile();
+
+        markaTablosuYenile();
+
+        durumTablosuYenile();
+
+        formAlanlariniSifirla();
+
+        tabloYenile();
+
+
+        const aramaPaneli =
+            document.getElementById(
+                'aramaSonuclariPaneli'
+            );
+
+        if (aramaPaneli) {
+            aramaPaneli.style.display = 'none';
+        }
+
+
+        alert(
+            "Sistem sıfırlandı!"
+        );
     }
 </script>
 </body>
